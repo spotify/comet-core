@@ -14,7 +14,6 @@
 
 """comet - Comet Distributed Security Notification System"""
 
-__version__ = '0.1.0'
 __author__ = 'Spotify Security Wasabi team <wasabi@spotify.com>'
 __all__ = ['Comet']
 
