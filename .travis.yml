@@ -7,4 +7,6 @@ install:
   - pip install -r requirements.txt
 
 # command to run tests
-script: pytest
+script: 
+  - pylint --rcfile=.pylintrc comet_core
+  - pytest
