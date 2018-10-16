@@ -10,3 +10,15 @@ install:
 script: 
   - pylint --rcfile=.pylintrc comet_core
   - pytest
+
+# deployment 
+deploy:
+  provider: pypi
+  server: https://test.pypi.org/legacy/
+  user: spotifysecurity
+  password:
+    secure: "F0plNFjUVRbnQdm+0LTQpm3jKpCju8dOLw47PgIIZRJ7F4+beLjDDvB5VNE8b69SVJXby4ottUpBDqigoiheK2ll4uLkKq9H9v9Zra+8Zo7QFnHZ3KKETS6OftZl93mnUBpBlr6c7ir0WMyjA0tT1S7Z9bHHmiVXM09qk7uv6R2EYp9fb/JrXIbDwzzUItSAJkJgu/bbVsHe4bUmjlqAa1cQybiMcuMp1M8W3nz1M9/Moj92GdxTzNnqBKFqzB5Y556OtPDyo24J6Pcs9RHANWgiGyCeTy1jvULxcZj/C6iVolXgLA18U1Bzsfu1y1clylBixloCG5Ay/MXXoqmVl3OE32Meyjm0ftThmKmwkSjVlP85kCOnNAyHQ1eJlJL/A5DSXx33uy8EVI3OqOIHxvSk0x7TbaxAieUN6PWT2yW98EsJGwrBwUhNoyEEcBbK0IUMBaDgBWYfTVqapPwKE3vSW9egMBLcDL9FkR/mUrFxzOPoH/2q+jaX5QMwHtDL1vxJHcwfrsxcK6U54xd4bB/6b2gLyobJ/Qj2fI2Mjw2zbHGhrJvqoxb/rxuabIjK87H+0hy53LR+5lB33Syl6SgvNkbk4cfI8GGT4nQzhuTk49zLrEMvsZCTQ+RVYA0iBWt0u4XGyjTq2KqEW1bKPBfTzJ6O21lY48mCaENu/9A="
+  on:
+    tags: true
+    branch: master
+  distributions: sdist bdist_wheel
