@@ -1,24 +1,13 @@
+sudo: false
 language: python
-python:
-  - "3.6"
-# command to install dependencies
+cache: pip
+matrix:
+  include:
+  - python: '3.6'
+    env: TOXENV=py36
+  - python: '3.6'
+    env: TOXENV=lint
 install:
-  - pip install -r requirements-dev.txt
-  - pip install -r requirements.txt
-
-# command to run tests
-script: 
-  - pylint --rcfile=.pylintrc comet_core
-  - pytest
-
-# deployment 
-deploy:
-  provider: pypi
-  server: https://test.pypi.org/legacy/
-  user: spotifysecurity
-  password:
-    secure: "Ip/Do4TXsdmM7to9k56w3Z3sLbOSeuMfGei7cRg3DIamhr/E7oQEQb75Ma+uy9yaXmvv2xHPAywTu0mWAHWyrVmxKbfS4SL+VslsRdDXCgRGkFXqhptK4l1vZRCsVbWDmONgxm2MfREF8tTL+kef3WZ8mzcdleQo3Bap5b4ndYxxpBJch5oeo1I8nK+nmDDjb0AmhG9ZBecaNVMdmr/fpIMQa9kbI2dSXz6G5/gC/ouRdUqB4VK3q/gaT8D/Q4gWgImCGskqDz3+oP4k/xCrFHyxjBSPlQJfsCE9OuFcKF49gdebyI8D2fqkiIk2zgdbeT+mI2cvj7cd3nfK9XF2nUMWzUKNXa/haDCkJYXyRYvL1oiJ5n0/FpnkOF0TCMoTUVlTipRQlZynPYif7c1WlyvtetGJ3MQWA8734C2Uo/7dVP6W8nAbsTbGpwKa9RRsFGduRMcU/XkuGRutWp+C53gDXuTpi0yamAYbr+nnC+grXTs2ZRMMQSNHnbqcSBYfIQFN9NivE+ilKiTVxxblsFalwlAEcFe3QP7K/957Ol5zQnf/AhgUvQOVGaLru3MfysfJ8DsJF/6yY0uJDKljju2bNJCdjpza+mdXUl1ciIbWBTvB1vn2t7GmY6dFNExIa1kPVYVV2JMzaQK3Zi+A4Ph+Wnl1bdpvM9CWejD0L+g="
-  on:
-    tags: true
-    branch: master
-  distributions: sdist bdist_wheel
+- pip install tox-travis
+script:
+- tox
