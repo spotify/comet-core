@@ -5,9 +5,9 @@ language: python
 # setup caching
 cache: pip
 
-# install tox travis plugin
+# install tox
 install:
-- pip install tox-travis
+- pip install tox
 
 # select tox envs to run
 matrix:
