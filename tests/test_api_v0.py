@@ -16,7 +16,7 @@
 
 import pytest
 from flask import g, Response
-
+from unittest import mock
 from comet_core.api import CometApi
 
 
@@ -44,6 +44,18 @@ def client():  # pylint: disable=missing-param-doc,missing-type-doc
         yield app.test_client()
 
 
+@pytest.fixture
+def bad_client():  # pylint: disable=missing-param-doc,missing-type-doc
+    """Create a bad Flask test client fixture
+
+    Yields:
+        flask.testing.FlaskClient: a Flask testing client
+    """
+    api = CometApi()
+    app = api.create_app()
+    with app.app_context():
+        yield app.test_client()
+
 def test_hello(client):  # pylint: disable=missing-param-doc,missing-type-doc,redefined-outer-name
     """Test the hello endpoint"""
     res = client.get('/')
@@ -51,28 +63,27 @@ def test_hello(client):  # pylint: disable=missing-param-doc,missing-type-doc,re
 
 
 # pylint: disable=missing-param-doc,missing-type-doc,redefined-outer-name
-def test_get_issues(client, test_db, monkeypatch):
+def test_get_issues(client, test_db):
     """"Feed all test messages to the get_issues function to see that they get rendered correctly"""
     g.user = 'testuser'
-    monkeypatch.setattr('comet_core.api_v0.get_db', lambda: test_db)
-    g.test_authorized_for = ['non@existant.com']
+    with mock.patch('comet_core.api_v0.get_db', return_value=test_db):
+        g.test_authorized_for = ['non@existant.com']
 
-    res = client.get('/v0/issues')
-    assert res.status == '200 OK'
-    assert not res.json
+        res = client.get('/v0/issues')
+        assert res.status == '200 OK'
+        assert not res.json
 
-    g.test_authorized_for = ['test@acme.org']
+        g.test_authorized_for = ['test@acme.org']
 
-    res = client.get('/v0/issues')
-    assert res.status == '200 OK'
-    assert res.json, res.json
+        res = client.get('/v0/issues')
+        assert res.status == '200 OK'
+        assert res.json, res.json
 
-    g.test_authorized_for = Response(status=401)
+        g.test_authorized_for = Response(status=401)
 
-    res = client.get('/v0/issues')
-    assert res.status == '401 UNAUTHORIZED'
-    assert not res.json
-
+        res = client.get('/v0/issues')
+        assert res.status == '401 UNAUTHORIZED'
+        assert not res.json
 
 def test_get_issues_no_hydrator():
     app = CometApi().create_app()
@@ -85,6 +96,8 @@ def test_acceptrisk(client):
     g.test_authorized_for = []
     res = client.post('/v0/acceptrisk', json={'fingerprint': ''})
     assert res.json
+    res = client.post('/v0/acceptrisk', json={})
+    assert res.json.get('status') == 'error'
 
 
 def test_snooze(client):
@@ -93,13 +106,34 @@ def test_snooze(client):
     assert res.json
 
 
+def test_snooze_error(bad_client):
+    res = bad_client.post('/v0/snooze')
+    assert res.json
+    assert res.status == '500 INTERNAL SERVER ERROR'
+
 def test_falsepositive(client):
     g.test_authorized_for = []
     res = client.post('/v0/falsepositive', json={'fingerprint': ''})
     assert res.json
 
 
+def test_falsepositive_error(bad_client):
+    res = bad_client.post('/v0/falsepositive')
+    assert res.json
+    assert res.status == '500 INTERNAL SERVER ERROR'
+
+
 def test_v0_root(client):
     g.test_authorized_for = []
     res = client.get('/v0/')
+    assert res.data == b'Comet-API-v0'
+
+
+def test_dbhealth_check(client):
+    with mock.patch('comet_core.api_v0.get_db') as mock_get_db:
+        mock_get_db.side_effect = Exception('XOXO')
+        res = client.get('/v0/dbcheck')
+    assert res.json.get('status') == 'error'
+
+    res = client.get('/v0/dbcheck')
     assert res.data == b'Comet-API-v0'

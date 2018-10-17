@@ -264,3 +264,15 @@ def test_start_stop_inputs(app):
 
     app.stop()
     assert TestInput.stop.called
+
+
+def test_run(app):
+    def f(*args):
+        app.running = False
+
+    app.process_unprocessed_events = mock.Mock()
+    with mock.patch("time.sleep") as mocked_sleep:
+        mocked_sleep.side_effect = f
+        app.run()
+    mocked_sleep.assert_called_once()
+    app.process_unprocessed_events.assert_called_once()
