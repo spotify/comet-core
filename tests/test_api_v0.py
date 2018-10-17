@@ -44,6 +44,18 @@ def client():  # pylint: disable=missing-param-doc,missing-type-doc
         yield app.test_client()
 
 
+@pytest.fixture
+def bad_client():  # pylint: disable=missing-param-doc,missing-type-doc
+    """Create a bad Flask test client fixture
+
+    Yields:
+        flask.testing.FlaskClient: a Flask testing client
+    """
+    api = CometApi()
+    app = api.create_app()
+    with app.app_context():
+        yield app.test_client()
+
 def test_hello(client):  # pylint: disable=missing-param-doc,missing-type-doc,redefined-outer-name
     """Test the hello endpoint"""
     res = client.get('/')
@@ -73,7 +85,6 @@ def test_get_issues(client, test_db):
         assert res.status == '401 UNAUTHORIZED'
         assert not res.json
 
-
 def test_get_issues_no_hydrator():
     app = CometApi().create_app()
     with app.app_context():
@@ -95,10 +106,21 @@ def test_snooze(client):
     assert res.json
 
 
+def test_snooze_error(bad_client):
+    res = bad_client.post('/v0/snooze')
+    assert res.json
+    assert res.status == '500 INTERNAL SERVER ERROR'
+
 def test_falsepositive(client):
     g.test_authorized_for = []
     res = client.post('/v0/falsepositive', json={'fingerprint': ''})
     assert res.json
+
+
+def test_falsepositive_error(bad_client):
+    res = bad_client.post('/v0/falsepositive')
+    assert res.json
+    assert res.status == '500 INTERNAL SERVER ERROR'
 
 
 def test_v0_root(client):
