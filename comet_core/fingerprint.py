@@ -61,7 +61,7 @@ def filter_dict(orig_dict, blacklist):
     for item in blacklist:
         if isinstance(item, str) and item in orig_dict:
             del orig_dict[item]
-        if isinstance(item, collections.Iterable):
+        elif isinstance(item, collections.Iterable):
             pointer = orig_dict
             for sub in item[:-1]:
                 pointer = pointer.get(sub, {})
