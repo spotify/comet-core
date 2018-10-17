@@ -14,7 +14,7 @@
 
 """Comet v0 API.
 
-Used by System-Z"""
+Used by Web UI"""
 
 import logging
 
