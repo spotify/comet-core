@@ -30,11 +30,11 @@ ORIG_DICT_FP = '30c3e95d8fb3665ba70c6e3630a57d9a'
 
 BLACKLIST = [
     'a',
-    ('res', 'gl'),
+    ['res', 'gl'],
     'lol'
 ]
 
-AFTER_BLACKLIST_FP = '49071247c669ffe79f20dd537749d0c8'
+AFTER_BLACKLIST_FP = 'a4e1f36de415f8ab64da9fd8d76c8bbc'
 
 
 def test_event_fingerprint_no_blacklist():  # pylint: disable=invalid-name,missing-docstring

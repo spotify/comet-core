@@ -14,6 +14,7 @@
 
 """Helper function to compute the fingerprint of alerts."""
 
+import collections
 import json
 from copy import deepcopy
 from hashlib import shake_256
@@ -58,14 +59,15 @@ def filter_dict(orig_dict, blacklist):
         dict: the filtered dict.
     """
     for item in blacklist:
-        if isinstance(item, list):
+        if isinstance(item, str) and item in orig_dict:
+            del orig_dict[item]
+        if isinstance(item, collections.Iterable):
             pointer = orig_dict
             for sub in item[:-1]:
                 pointer = pointer.get(sub, {})
             if item[-1] in pointer:
                 del pointer[item[-1]]
-        elif item in orig_dict:
-            del orig_dict[item]
+
     return orig_dict
 
 
