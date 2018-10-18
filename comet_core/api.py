@@ -19,7 +19,7 @@ import logging
 from flask import Flask
 from flask_cors import CORS
 
-from comet_core import api_v0, api_legacy
+from comet_core import api_v0
 
 LOG = logging.getLogger(__name__)
 
@@ -96,7 +96,6 @@ class CometApi():
         })
 
         app.register_blueprint(api_v0.bp)
-        app.register_blueprint(api_legacy.bp)
 
         @app.route('/')
         def health_check():  # pylint: disable=unused-variable
