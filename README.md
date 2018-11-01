@@ -6,6 +6,9 @@ Comet is an alert distribution framework which allows you to distribute alerts a
 
 Built with ❤️ at Spotify
 
+## Documentation
+Please see the [Comet main repository](https://github.com/spotify/comet) for documentation.
+
 ## Code of Conduct
 
 This project adheres to the [Open Code of Conduct][code-of-conduct]. By participating, you are expected to honor this code.
