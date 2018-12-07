@@ -129,3 +129,6 @@ class IgnoreFingerprintRecord(BaseRecord):
     SNOOZE = 'snooze'
     ACCEPT_RISK = 'acceptrisk'
     FALSE_POSITIVE = 'falsepositive'
+    ACKNOWLEDGE = 'acknowledge'
+    ESCALATE_MANUALLY = 'escalate_manually'
+

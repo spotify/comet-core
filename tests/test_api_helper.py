@@ -16,12 +16,19 @@
 import pytest
 
 from comet_core.api import CometApi
-from comet_core.api_helper import get_db, hydrate_open_issues
+from comet_core.api_helper import get_db, hydrate_open_issues, \
+    get_pubsub_publisher
 
 
 @pytest.fixture
-def app_context():
+def pubsub_output_config():
+    return {'topic': 'projects/comet-security/topics/nurit_test'}
+
+
+@pytest.fixture
+def app_context(pubsub_output_config):
     api = CometApi()
+    api.set_config('pubsub_output', pubsub_output_config)
     app = api.create_app()
 
     yield app.app_context()
@@ -36,3 +43,8 @@ def test_no_hydrator():
     api = CometApi()
     with api.create_app().app_context():
         assert not hydrate_open_issues([])
+
+
+def test_get_pubsub_publisher(app_context):
+    with app_context:
+        assert get_pubsub_publisher()

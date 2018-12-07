@@ -466,3 +466,58 @@ def test_remove_duplicate_events():
     assert three in records
     assert one not in records
     assert len(records) == 2
+
+
+@pytest.fixture
+def event_sent_wasnt_addressed():
+    event = EventRecord(received_at=datetime(2018, 7, 7, 9, 0, 0),
+                      source_type='datastoretest',
+                      owner='a',
+                      sent_at=datetime(2018, 7, 7, 9, 0, 0),
+                      data={})
+    event.fingerprint = 'f1'
+    return event
+
+
+@pytest.fixture
+def ds_with_some_non_addressed_events(event_sent_wasnt_addressed):
+    data_store = comet_core.data_store.DataStore('sqlite://')
+
+    # sent & addressed event
+    two = EventRecord(received_at=datetime(2018, 7, 7, 9, 30, 0),
+                      source_type='datastoretest',
+                      owner='a',
+                      sent_at=datetime(2018, 7, 7, 9, 30, 0),
+                      data={})
+    two.fingerprint = 'f2'
+    # unprocessed event
+    three = EventRecord(received_at=datetime(2018, 7, 7, 9, 0, 0),
+                        source_type='datastoretest',
+                        owner='b',
+                        data={})
+    # different source type event
+    four = EventRecord(received_at=datetime(2018, 7, 7, 9, 0, 0),
+                        source_type='datastoretest2',   # Note that this is another source type!
+                        owner='b',
+                        data={})
+    three.fingerprint = 'f4'
+
+    data_store.add_record(event_sent_wasnt_addressed)
+    data_store.add_record(two)
+    data_store.add_record(three)
+    data_store.add_record(four)
+
+    yield data_store
+
+
+def test_get_real_time_events_did_not_addressed(ds_with_some_non_addressed_events,
+                                                event_sent_wasnt_addressed):
+    two_fingerprint = 'f2'
+    source_type = 'datastoretest'
+    # save event two to indicate it was addressed.
+    ds_with_some_non_addressed_events.ignore_event_fingerprint(two_fingerprint,
+                                                         ignore_type=IgnoreFingerprintRecord.ACKNOWLEDGE)
+    non_addressed_events = \
+        ds_with_some_non_addressed_events.get_real_time_events_did_not_addressed(source_type)
+
+    assert event_sent_wasnt_addressed in non_addressed_events

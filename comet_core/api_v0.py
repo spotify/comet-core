@@ -22,7 +22,8 @@ from datetime import timedelta, datetime
 
 from flask import Blueprint, g, jsonify, request
 
-from comet_core.api_helper import hydrate_open_issues, get_db, requires_auth
+from comet_core.api_helper import hydrate_open_issues, get_db, \
+    requires_auth, get_pubsub_publisher
 from comet_core.model import IgnoreFingerprintRecord
 
 
@@ -141,3 +142,50 @@ def dbhealth_check():
         return jsonify({'status': 'error', 'msg': 'dbhealth_check failed'}), 500
 
     return 'Comet-API-v0'
+
+
+@bp.route('/acknowledge', methods=('POST',))
+@requires_auth
+def acknowledge():
+    """Mark the given fingerprint as acknowledge
+
+    Returns:
+        str: the HTTP response string
+    """
+    try:
+        fingerprint = request.get_json()['fingerprint']
+        get_db().ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.ACKNOWLEDGE)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception('Got exception on acknowledge')
+        return jsonify({'status': 'error', 'msg': 'acknowledge failed'}), 500
+
+    return ok()
+
+
+@bp.route('/escalate', methods=('POST',))
+@requires_auth
+def escalate():
+    """extract the given fingerprint from the db and publish it to
+       pubsub as user_escalation source type
+
+    Returns:
+        str: the HTTP response string
+    """
+    try:
+        fingerprint = request.get_json()['fingerprint']
+        event = get_db().get_latest_event_with_fingerprint(fingerprint)
+        # indication that the user addressed the alert.
+        get_db().ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.ESCALATE_MANUALLY)
+        message = event.data
+        source_type = 'user_escalation'
+
+        publisher = get_pubsub_publisher()
+        publisher.publish_message(message, source_type)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception('Got exception on escalate real time alert')
+        return jsonify({'status': 'error',
+                        'msg': 'escalation real time alerts failed'}), 500
+
+    return ok()
