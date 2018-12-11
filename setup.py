@@ -20,6 +20,9 @@ __location__ = os.path.realpath(os.path.dirname(__file__))
 with open(os.path.join(__location__, 'requirements.txt')) as f:
     requirements = f.read().splitlines()
 
+git_requirements = [r for r in requirements if r.startswith('-e')]
+requirements = [r for r in requirements if not r.startswith('-e')]
+
 setuptools.setup(
     name="comet-core",
     version="1.0.6",
@@ -34,6 +37,7 @@ setuptools.setup(
     packages=['comet_core'],
 
     install_requires=requirements,
+    dependency_links=git_requirements,
 
     include_package_data=True,
 
