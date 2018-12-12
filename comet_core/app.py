@@ -250,7 +250,10 @@ class Comet:
             self.parsers[source_type] = schema
 
     def register_real_time_source(self, source_type):
-        """Register real time source type"""
+        """Register real time source type
+        Args:
+            source_type (str): the source type to register the parser for
+        """
         self.real_time_sources.append(source_type)
 
     def register_hydrator(self, source_type, func=None):
@@ -366,14 +369,14 @@ class Comet:
                                               source_type)
 
             elif source_type == 'user_escalation':
-                real_time_events_needs_escalation = []
+                events_to_escalate = []
                 for event in batch_events:
-                    real_time_events_needs_escalation.append(event)
+                    events_to_escalate.append(event)
 
                 # handle real_time alerts need escalation
-                if real_time_events_needs_escalation:
+                if events_to_escalate:
                     self._handle_events_need_escalation(source_type,
-                                                        real_time_events_needs_escalation)
+                                                        events_to_escalate)
             else:
                 # Group events by owner and mark them as new or seen before
                 for event in batch_events:
@@ -403,8 +406,12 @@ class Comet:
             #  * ..was last sent to the owner X days ago
             # (where X is `owner_reminder_cadence`, default 7 days)
             for owner, events in events_by_owner.items():
+                owner_reminder_cadence = \
+                    source_type_config['owner_reminder_cadence']
                 if any([event.new for event in events]) \
-                        or self.data_store.check_any_issue_needs_reminder(source_type_config['owner_reminder_cadence'], events):
+                        or self.data_store.\
+                        check_any_issue_needs_reminder(owner_reminder_cadence,
+                                                       events):
                     self._route_events(owner, events, source_type)
 
                 self.data_store.update_processed_at_timestamp_to_now(events)
@@ -436,7 +443,7 @@ class Comet:
                 LOG.error('real time source type must have specific configs')
 
             non_addressed_events = \
-                self.data_store.get_real_time_events_did_not_addressed(source_type)
+                self.data_store.get_events_did_not_addressed(source_type)
 
             events_needs_escalation = []
             escalate_cadence_per_event = \

@@ -518,6 +518,6 @@ def test_get_real_time_events_did_not_addressed(ds_with_some_non_addressed_event
     ds_with_some_non_addressed_events.ignore_event_fingerprint(two_fingerprint,
                                                          ignore_type=IgnoreFingerprintRecord.ACKNOWLEDGE)
     non_addressed_events = \
-        ds_with_some_non_addressed_events.get_real_time_events_did_not_addressed(source_type)
+        ds_with_some_non_addressed_events.get_events_did_not_addressed(source_type)
 
     assert event_sent_wasnt_addressed in non_addressed_events

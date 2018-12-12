@@ -118,15 +118,21 @@ class DataStore:
 
         return []
 
-    def get_real_time_events_did_not_addressed(self, source_type):
+    def get_events_did_not_addressed(self, source_type):
         """Get all events who we sent to the user +
            the event haven't escalated already
            and do not exist in IgnoreFingerprintRecord database.
-           That means that the user didn't addressed those events."""
+           That means that the user didn't addressed those events.
+        Args:
+            source_type (str): source type to filter the search by.
+        Returns:
+            list: list of `EventRecord`s not addressed,
+            or empty list if there is nothing to return
+        """
         non_addressed_events = self.session.query(EventRecord). \
-            filter((EventRecord.sent_at.isnot(None)) & (
-                    EventRecord.escalated_at.is_(None)) & (
-                    EventRecord.source_type == source_type)). \
+            filter((EventRecord.sent_at.isnot(None)) &
+                   (EventRecord.escalated_at.is_(None)) &
+                   (EventRecord.source_type == source_type)). \
             outerjoin(IgnoreFingerprintRecord,
                       EventRecord.fingerprint ==
                       IgnoreFingerprintRecord.fingerprint)\
