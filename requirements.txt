@@ -10,4 +10,3 @@ retrying==1.3.3
 six==1.11.0
 SQLAlchemy==1.2.4
 Werkzeug==0.14.1
--e git+git://github.com/nuritizra/comet-common.git@output_google_pubsub#egg=comet-common
