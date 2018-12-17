@@ -48,7 +48,7 @@ def client():  # pylint: disable=missing-param-doc,missing-type-doc
 
 @pytest.fixture
 def pubsub_output_config():
-    return {'topic': 'projects/comet-security/topics/nurit_test'}
+    return {'topic': 'some topic name'}
 
 
 @pytest.fixture

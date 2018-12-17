@@ -32,7 +32,7 @@ setuptools.setup(
     author_email="wasabi@spotify.com",
 
     description="Comet Distributed Security Notification Framework",
-    long_description="Comet Distributed Security Notification Framework",
+    long_description=open('README.md').read(),
 
     packages=['comet_core'],
 

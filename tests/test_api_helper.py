@@ -22,7 +22,7 @@ from comet_core.api_helper import get_db, hydrate_open_issues, \
 
 @pytest.fixture
 def pubsub_output_config():
-    return {'topic': 'projects/comet-security/topics/nurit_test'}
+    return {'topic': 'some topic name'}
 
 
 @pytest.fixture
