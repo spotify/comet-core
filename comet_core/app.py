@@ -448,10 +448,13 @@ class Comet:
             events_needs_escalation = []
             escalate_cadence_per_event = \
                 source_type_config['escalate_cadence_per_event']
+            default_escalate_cadence = timedelta(hours=36)
 
             for event in non_addressed_events:
                 search_name = event.data.get('search_name')
-                escalate_cadence = escalate_cadence_per_event.get(search_name)
+                escalate_cadence = \
+                    escalate_cadence_per_event.get(search_name,
+                                                   default_escalate_cadence)
                 event_sent_at = event.sent_at
 
                 # when is earliest time to escalate the specific event
