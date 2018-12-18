@@ -343,7 +343,6 @@ class Comet:
         LOG.debug('Processing unprocessed events')
 
         # pylint: disable=consider-iterating-dictionary
-        # for source_type in self.parsers.keys():
         for source_type in self.parsers.keys():
             source_type_config = self.batch_config
             if source_type in self.specific_configs:
@@ -446,15 +445,15 @@ class Comet:
                 self.data_store.get_events_did_not_addressed(source_type)
 
             events_needs_escalation = []
-            escalate_cadence_per_event = \
-                source_type_config['escalate_cadence_per_event']
             default_escalate_cadence = timedelta(hours=36)
 
             for event in non_addressed_events:
                 search_name = event.data.get('search_name')
+                alert_properties = \
+                    source_type_config['alerts'].get(search_name, {})
                 escalate_cadence = \
-                    escalate_cadence_per_event.get(search_name,
-                                                   default_escalate_cadence)
+                    alert_properties.get('escalate_cadence',
+                                         default_escalate_cadence)
                 event_sent_at = event.sent_at
 
                 # when is earliest time to escalate the specific event
