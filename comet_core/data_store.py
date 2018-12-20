@@ -135,8 +135,8 @@ class DataStore:
                    (EventRecord.source_type == source_type)). \
             outerjoin(IgnoreFingerprintRecord,
                       EventRecord.fingerprint ==
-                      IgnoreFingerprintRecord.fingerprint)\
-            .filter(IgnoreFingerprintRecord.fingerprint.is_(None)).all()
+                      IgnoreFingerprintRecord.fingerprint). \
+            filter(IgnoreFingerprintRecord.fingerprint.is_(None)).all()
 
         return non_addressed_events
 
@@ -351,3 +351,23 @@ class DataStore:
             return True
 
         return most_recent_processed[0] <= datetime.utcnow() - new_threshold
+
+    def get_real_time_events_need_escalation(self, source_type):
+        """
+        Get all the events that the end user escalate manually
+        and weren't escalated already by comet.
+        Args:
+            source_type (str): source type to filter the search by.
+        Returns:
+            list: list of `EventRecord`s to escalate.
+        """
+        events_to_escalate = self.session.query(EventRecord). \
+            filter((EventRecord.sent_at.isnot(None)) &
+                   (EventRecord.escalated_at.is_(None)) &
+                   (EventRecord.source_type == source_type)). \
+            outerjoin(IgnoreFingerprintRecord,
+                      EventRecord.fingerprint ==
+                      IgnoreFingerprintRecord.fingerprint). \
+            filter(IgnoreFingerprintRecord.ignore_type ==
+                   IgnoreFingerprintRecord.ESCALATE_MANUALLY).all()
+        return events_to_escalate

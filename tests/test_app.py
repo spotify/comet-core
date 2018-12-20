@@ -23,7 +23,7 @@ from marshmallow import fields, Schema
 
 from comet_core import Comet
 from comet_core.app import EventContainer
-from comet_core.model import EventRecord
+from comet_core.model import EventRecord, IgnoreFingerprintRecord
 
 # Helpers for test_process_unsent_events_recipient_override
 RECORD_OWNER = 'not-this-one@test.com'
@@ -283,7 +283,6 @@ def test_run(app):
 def test_process_unprocessed_real_time_events():
     app = Comet()
     app.register_parser('real_time_source', json)
-    app.register_parser('user_escalation', json)
     app.register_parser('datastoretest', json)
 
     app.register_real_time_source('real_time_source')
@@ -327,14 +326,17 @@ def test_process_unprocessed_real_time_events():
                     data={},
                     fingerprint='f3'))
 
-    # not processed user escalation event
+    # real time event needs escalation
     app.data_store.add_record(
         EventRecord(id=4,
                     received_at=datetime.utcnow() - timedelta(days=3),
-                    source_type='user_escalation',
+                    source_type='real_time_source',
                     owner=check_user,
                     data={},
                     fingerprint='f4'))
+
+    app.data_store.ignore_event_fingerprint('f4',
+                                            IgnoreFingerprintRecord.ESCALATE_MANUALLY)
 
     app.process_unprocessed_events()
     assert real_time_router.call_count == 1
@@ -351,12 +353,20 @@ def test_handle_non_addressed_events():
     app.register_real_time_source('real_time_source')
     app.register_real_time_source('real_time_source2')
 
-    app.set_config('real_time_source', {'escalate_cadence_per_event':
-                                            {'alert search name':
-                                                 timedelta(minutes=45)}})
-    app.set_config('real_time_source2', {'escalate_cadence_per_event':
-                                            {'alert search name':
-                                                 timedelta(minutes=45)}})
+    app.set_config('real_time_source', {'alerts': {
+        'alert search name':
+            {
+                'escalate_cadence': timedelta(minutes=45),
+                'template': 'alerts_template'
+            }
+    }})
+    app.set_config('real_time_source2', {'alerts': {
+        'alert search name':
+            {
+                'escalate_cadence': timedelta(minutes=45),
+                'template': 'alerts_template'
+            }
+    }})
     escalator = mock.Mock()
     escalator2 = mock.Mock()
     app.register_escalator('real_time_source', func=escalator)

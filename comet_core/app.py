@@ -355,27 +355,23 @@ class Comet:
 
             events_by_owner = {}
             ignored_events = []
-            needs_escalation_events = []
+            need_escalation_events = []
 
             if source_type in self.real_time_sources:
                 real_time_events_by_owner = {}
                 for event in batch_events:
                     real_time_events_by_owner.setdefault(event.owner,
                                                          []).append(event)
-
-                # handle real_time alerts
+                # handle unprocessed real_time alerts
                 self._handle_real_time_alerts(real_time_events_by_owner,
                                               source_type)
+                # check if real time alerts need escalation
+                events_to_escalate = \
+                    self.data_store.get_real_time_events_need_escalation(
+                        source_type)
+                self._handle_events_need_escalation(source_type,
+                                                    events_to_escalate)
 
-            elif source_type == 'user_escalation':
-                events_to_escalate = []
-                for event in batch_events:
-                    events_to_escalate.append(event)
-
-                # handle real_time alerts need escalation
-                if events_to_escalate:
-                    self._handle_events_need_escalation(source_type,
-                                                        events_to_escalate)
             else:
                 # Group events by owner and mark them as new or seen before
                 for event in batch_events:
@@ -390,7 +386,7 @@ class Comet:
                             event.needs_escalation = True
                             event.first_escalation = not self.data_store.check_if_previously_escalated(
                                 event)
-                            needs_escalation_events.append(event)
+                            need_escalation_events.append(event)
                         events_by_owner.setdefault(event.owner, []).append(event)
 
             if ignored_events:
@@ -422,10 +418,10 @@ class Comet:
 
             # Check if any of the events for this source_type needs
             # escalation and if we may send an escalation
-            if needs_escalation_events and self.data_store. \
+            if need_escalation_events and self.data_store. \
                     may_send_escalation(source_type, source_type_config['escalation_reminder_cadence']):
                 self._handle_events_need_escalation(source_type,
-                                                    needs_escalation_events)
+                                                    need_escalation_events)
 
     def handle_non_addressed_events(self):
         """Check if there are real time events sent to the user

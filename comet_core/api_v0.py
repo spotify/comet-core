@@ -23,7 +23,7 @@ from datetime import timedelta, datetime
 from flask import Blueprint, g, jsonify, request
 
 from comet_core.api_helper import hydrate_open_issues, get_db, \
-    requires_auth, get_pubsub_publisher
+    requires_auth
 from comet_core.model import IgnoreFingerprintRecord
 
 
@@ -166,23 +166,15 @@ def acknowledge():
 @bp.route('/escalate', methods=('POST',))
 @requires_auth
 def escalate():
-    """extract the given fingerprint from the db and publish it to
-       pubsub as user_escalation source type
-
+    """Mark the given fingerprint as escalate manually
     Returns:
         str: the HTTP response string
     """
     try:
         fingerprint = request.get_json()['fingerprint']
-        event = get_db().get_latest_event_with_fingerprint(fingerprint)
-        # indication that the user addressed the alert.
+        # indication that the user addressed the alert and escalate.
         get_db().ignore_event_fingerprint(fingerprint,
                                           IgnoreFingerprintRecord.ESCALATE_MANUALLY)
-        message = event.data
-        source_type = 'user_escalation'
-
-        publisher = get_pubsub_publisher()
-        publisher.publish_message(message, source_type)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on escalate real time alert')
         return jsonify({'status': 'error',

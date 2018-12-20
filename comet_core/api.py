@@ -46,17 +46,6 @@ class CometApi():
         self.port = port
         self.auth_func = None
         self.hydrator_func = None
-        self.extra_config = {}
-
-    def set_config(self, config_name, config):
-        """Call to add extra config.
-
-        Args:
-            config_name (str): config key to add config to
-            config (dict): the config values
-
-        """
-        self.extra_config[config_name] = config
 
     def register_auth(self):
         """Used as a decorator to register an auth function
@@ -97,8 +86,6 @@ class CometApi():
         app.config['auth_func'] = self.auth_func
         app.config['hydrator_func'] = self.hydrator_func
         app.config['database_uri'] = self.database_uri
-        for key, dict_config in self.extra_config.items():
-            app.config[key] = dict_config
 
         cors = CORS()
         cors.init_app(app, resources={

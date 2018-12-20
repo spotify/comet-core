@@ -18,7 +18,6 @@ import logging
 from functools import wraps
 
 from flask import g, Response, current_app
-from comet_common.comet_output_google_pubsub import PubSubOutput
 from comet_core.data_store import DataStore
 
 LOG = logging.getLogger(__name__)
@@ -49,16 +48,6 @@ def get_db():
     if 'db' not in g:
         g.db = DataStore(current_app.config.get('database_uri'))
     return g.db
-
-
-def get_pubsub_publisher():
-    """Initialize PubSubOutput class to publish messages to pubsub
-        Returns:
-            PubSubOutput: instance to publish messages to pubsub
-    """
-    pubsub_config = current_app.config.get('pubsub_output')
-    topic = pubsub_config.get('topic')
-    return PubSubOutput(topic)
 
 
 # pylint: disable=missing-return-doc,missing-return-type-doc,missing-param-doc,missing-type-doc
