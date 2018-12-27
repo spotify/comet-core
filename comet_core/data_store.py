@@ -352,7 +352,7 @@ class DataStore:
 
         return most_recent_processed[0] <= datetime.utcnow() - new_threshold
 
-    def get_real_time_events_need_escalation(self, source_type):
+    def get_events_need_escalation(self, source_type):
         """
         Get all the events that the end user escalate manually
         and weren't escalated already by comet.

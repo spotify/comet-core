@@ -536,6 +536,6 @@ def test_get_real_time_events_need_escalation(ds_with_real_time_events,
                                               event_to_escalate):
     source_type = 'datastoretest'
     events_to_escalate = \
-        ds_with_real_time_events.get_real_time_events_need_escalation(source_type)
+        ds_with_real_time_events.get_events_need_escalation(source_type)
 
     assert event_to_escalate in events_to_escalate

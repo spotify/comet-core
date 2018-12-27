@@ -367,7 +367,7 @@ class Comet:
                                               source_type)
                 # check if real time alerts need escalation
                 events_to_escalate = \
-                    self.data_store.get_real_time_events_need_escalation(
+                    self.data_store.get_events_need_escalation(
                         source_type)
                 self._handle_events_need_escalation(source_type,
                                                     events_to_escalate)
