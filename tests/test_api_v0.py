@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Test api_helper module"""
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import g, Response
 from unittest import mock
+
 from comet_core.api import CometApi
 
 
@@ -56,6 +58,7 @@ def bad_client():  # pylint: disable=missing-param-doc,missing-type-doc
     with app.app_context():
         yield app.test_client()
 
+
 def test_hello(client):  # pylint: disable=missing-param-doc,missing-type-doc,redefined-outer-name
     """Test the hello endpoint"""
     res = client.get('/')
@@ -85,6 +88,7 @@ def test_get_issues(client, test_db):
         assert res.status == '401 UNAUTHORIZED'
         assert not res.json
 
+
 def test_get_issues_no_hydrator():
     app = CometApi().create_app()
     with app.app_context():
@@ -110,6 +114,7 @@ def test_snooze_error(bad_client):
     res = bad_client.post('/v0/snooze')
     assert res.json
     assert res.status == '500 INTERNAL SERVER ERROR'
+
 
 def test_falsepositive(client):
     g.test_authorized_for = []
@@ -137,3 +142,33 @@ def test_dbhealth_check(client):
 
     res = client.get('/v0/dbcheck')
     assert res.data == b'Comet-API-v0'
+
+
+def test_acknowledge(client):
+    """Test the acknowledge endpoint works"""
+    g.test_authorized_for = []
+    res = client.post('/v0/acknowledge', json={'fingerprint': ''})
+    assert res.json == {'status': 'ok'}
+
+
+def test_acknowledge_error_no_fingerprint_passed(client):
+    """Test the acknowledge endpoint fails when no fingerprint passes"""
+    g.test_authorized_for = []
+    res = client.post('/v0/acknowledge')
+    assert res.status == '500 INTERNAL SERVER ERROR'
+    assert res.json == {'status': 'error', 'msg': 'acknowledge failed'}
+
+
+def test_escalate(client):
+    """Test the escalate endpoint works"""
+    g.test_authorized_for = []
+    res = client.post('/v0/escalate', json={'fingerprint': ''})
+    assert res.json == {'status': 'ok'}
+
+
+def test_escalate_error(client):
+    """Test escalation fails when when no fingerprint passes"""
+    g.test_authorized_for = []
+    res = client.post('/v0/escalate')
+    assert res.json == \
+           {'msg': 'escalation real time alerts failed', 'status': 'error'}

@@ -18,7 +18,6 @@ import logging
 from functools import wraps
 
 from flask import g, Response, current_app
-
 from comet_core.data_store import DataStore
 
 LOG = logging.getLogger(__name__)
