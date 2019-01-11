@@ -17,10 +17,11 @@
 Used by Web UI"""
 
 import logging
+import re
 
 from datetime import timedelta, datetime
 
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, g, jsonify, request, Markup
 
 from comet_core.api_helper import hydrate_open_issues, get_db, \
     requires_auth
@@ -38,6 +39,30 @@ def ok():  # pylint: disable=invalid-name
         Response: a 200 OK response with JSON payload
     """
     return jsonify({'status': 'ok'})
+
+
+def action_succeeded(custom_msg):
+    message = '{0}'.format(custom_msg)
+    return Markup('<h2>%s</h2><br>'
+                  '<h3>This feature is still early in development,'
+                  ' please reach out to Security if you have any feedback.</h3>') % message
+
+
+def action_failed(custom_msg):
+    message = '{0}'.format(custom_msg)
+    return Markup('<h2>%s</h2><br>'
+                  '<h3>Please complete the action by emailing to security.</h3>'
+                  '<br>'
+                  '<h3>This feature is still early in development,'
+                  ' please reach out to Security if you have any feedback.</h3>') % message
+
+
+def fingerprint_ok(fingerprint):
+    pattern = re.compile('[a-zA-Z0-9._-]*')
+    if not fingerprint and pattern.fullmatch(fingerprint.decode("utf-8")):
+        error_msg = f'fingerprint is not valid: {fingerprint}'
+        LOG.exception(error_msg)
+        raise Exception(error_msg)
 
 
 @bp.route('/acceptrisk', methods=('POST',))
@@ -77,7 +102,7 @@ def snooze():
     return ok()
 
 
-@bp.route('/falsepositive', methods=('POST',))
+@bp.route('/falsepositive')
 @requires_auth
 def falsepositive():
     """Mark the given fingerprint as falsepositive
@@ -86,13 +111,15 @@ def falsepositive():
         str: the HTTP response string
     """
     try:
-        fingerprint = request.get_json()['fingerprint']
-        get_db().ignore_event_fingerprint(fingerprint, IgnoreFingerprintRecord.FALSE_POSITIVE)
+        fingerprint = request.query_string
+        fingerprint_ok(fingerprint)
+        get_db().ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.FALSE_POSITIVE)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on falsepositive')
-        return jsonify({'status': 'error', 'msg': 'falsepositive failed'}), 500
+        return action_failed('Reporting as false positive failed for some reason'), 500
 
-    return ok()
+    return action_succeeded('Thanks! We’ve marked this as a false positive')
 
 
 @bp.route('/issues')
@@ -144,7 +171,7 @@ def dbhealth_check():
     return 'Comet-API-v0'
 
 
-@bp.route('/acknowledge', methods=('POST',))
+@bp.route('/acknowledge')
 @requires_auth
 def acknowledge():
     """Mark the given fingerprint as acknowledge
@@ -153,17 +180,17 @@ def acknowledge():
         str: the HTTP response string
     """
     try:
-        fingerprint = request.get_json()['fingerprint']
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ACKNOWLEDGE)
+        fingerprint = request.query_string
+        fingerprint_ok(fingerprint)
+        get_db().ignore_event_fingerprint(fingerprint, IgnoreFingerprintRecord.ACKNOWLEDGE)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on acknowledge')
-        return jsonify({'status': 'error', 'msg': 'acknowledge failed'}), 500
+        return action_failed('acknowledgement failed for some reason'), 500
 
-    return ok()
+    return action_succeeded('Thanks for acknowledging!')
 
 
-@bp.route('/escalate', methods=('POST',))
+@bp.route('/escalate')
 @requires_auth
 def escalate():
     """Mark the given fingerprint as escalate manually
@@ -171,13 +198,13 @@ def escalate():
         str: the HTTP response string
     """
     try:
-        fingerprint = request.get_json()['fingerprint']
+        fingerprint = request.query_string
+        fingerprint_ok(fingerprint)
         # indication that the user addressed the alert and escalate.
         get_db().ignore_event_fingerprint(fingerprint,
                                           IgnoreFingerprintRecord.ESCALATE_MANUALLY)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on escalate real time alert')
-        return jsonify({'status': 'error',
-                        'msg': 'escalation real time alerts failed'}), 500
+        return action_failed('Escalation failed for some reason'), 500
 
-    return ok()
+    return action_succeeded('Thanks! This alert has been escalated.')

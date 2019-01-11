@@ -118,13 +118,13 @@ def test_snooze_error(bad_client):
 
 def test_falsepositive(client):
     g.test_authorized_for = []
-    res = client.post('/v0/falsepositive', json={'fingerprint': ''})
-    assert res.json
+    res = client.get('/v0/falsepositive?splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    assert 'Thanks! We’ve marked this as a false positive' in res.data.decode('utf-8')
 
 
 def test_falsepositive_error(bad_client):
-    res = bad_client.post('/v0/falsepositive')
-    assert res.json
+    res = bad_client.get('/v0/falsepositive')
+    assert 'Reporting as false positive failed for some reason' in res.data.decode('utf-8')
     assert res.status == '500 INTERNAL SERVER ERROR'
 
 
@@ -147,28 +147,27 @@ def test_dbhealth_check(client):
 def test_acknowledge(client):
     """Test the acknowledge endpoint works"""
     g.test_authorized_for = []
-    res = client.post('/v0/acknowledge', json={'fingerprint': ''})
-    assert res.json == {'status': 'ok'}
+    res = client.get('/v0/acknowledge?splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    assert 'Thanks for acknowledging!' in res.data.decode('utf-8')
 
 
 def test_acknowledge_error_no_fingerprint_passed(client):
     """Test the acknowledge endpoint fails when no fingerprint passes"""
     g.test_authorized_for = []
-    res = client.post('/v0/acknowledge')
+    res = client.get('/v0/acknowledge')
     assert res.status == '500 INTERNAL SERVER ERROR'
-    assert res.json == {'status': 'error', 'msg': 'acknowledge failed'}
+    assert 'acknowledgement failed for some reason' in res.data.decode('utf-8')
 
 
 def test_escalate(client):
     """Test the escalate endpoint works"""
     g.test_authorized_for = []
-    res = client.post('/v0/escalate', json={'fingerprint': ''})
-    assert res.json == {'status': 'ok'}
+    res = client.get('/v0/escalate?splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    assert 'Thanks! This alert has been escalated' in res.data.decode('utf-8')
 
 
 def test_escalate_error(client):
     """Test escalation fails when when no fingerprint passes"""
     g.test_authorized_for = []
-    res = client.post('/v0/escalate')
-    assert res.json == \
-           {'msg': 'escalation real time alerts failed', 'status': 'error'}
+    res = client.get('/v0/escalate')
+    assert 'Escalation failed for some reason' in res.data.decode('utf-8')
