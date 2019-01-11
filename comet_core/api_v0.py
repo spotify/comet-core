@@ -42,6 +42,14 @@ def ok():  # pylint: disable=invalid-name
 
 
 def action_succeeded(custom_msg):
+    """Generate flask markup to send a custom message for
+    the user based on the action on success
+
+    Args:
+        custom_msg (str): custom message for the action
+    Returns:
+        Markup: the message to return to the user when the action succeeded
+    """
     message = '{0}'.format(custom_msg)
     return Markup('<h2>%s</h2><br>'
                   '<h3>This feature is still early in development,'
@@ -49,6 +57,14 @@ def action_succeeded(custom_msg):
 
 
 def action_failed(custom_msg):
+    """Generate flask markup to send a custom message for
+    the user based on the action on failure
+
+    Args:
+        custom_msg (str): custom message for the action
+    Returns:
+        Markup: the message to return to the user when the action failed
+    """
     message = '{0}'.format(custom_msg)
     return Markup('<h2>%s</h2><br>'
                   '<h3>Please complete the action by emailing to security.</h3>'
@@ -58,6 +74,13 @@ def action_failed(custom_msg):
 
 
 def fingerprint_ok(fingerprint):
+    """Check if the fingerprint passed in the request is valid
+
+    Args:
+        fingerprint (str) the fingerprint to check.
+    Raise:
+        raise an exception if fingerprint not valid, raise and error.
+    """
     pattern = re.compile('[a-zA-Z0-9._-]*')
     if not fingerprint and pattern.fullmatch(fingerprint.decode("utf-8")):
         error_msg = f'fingerprint is not valid: {fingerprint}'
