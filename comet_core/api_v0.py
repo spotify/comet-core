@@ -77,9 +77,9 @@ def fingerprint_ok(fingerprint):
     """Check if the fingerprint passed in the request is valid
 
     Args:
-        fingerprint (str) the fingerprint to check.
-    Raise:
-        raise an exception if fingerprint not valid, raise and error.
+        fingerprint (str): the fingerprint to check.
+    Raises:
+        Exception: raise an exception if fingerprint not valid, raise and error.
     """
     pattern = re.compile('[a-zA-Z0-9._-]*')
     if not fingerprint and pattern.fullmatch(fingerprint.decode("utf-8")):
