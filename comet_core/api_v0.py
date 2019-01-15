@@ -46,9 +46,9 @@ def action_succeeded(message=None):
         return jsonify(response), 200
 
     template = \
-        """<h2>{{ message }}</h2>
-           <p>Note: This feature is still early in development, 
-           please reach out to Security if you have any feedback.</p>"""
+        """<h2>{{ message }}</h2> 
+        <p>Note: This feature is still early in development, 
+        please reach out to Security if you have any feedback.</p>"""
     return render_template_string(template, message=message)
 
 
@@ -69,9 +69,9 @@ def action_failed(message=None):
 
     template = \
         """<h2>Something went wrong: {{ message }}</h2>
-           <p>Please complete the action by emailing to Security.</p>
-           <p>Note: This feature is still early in development, 
-           please reach out to Security if you have any feedback.</p>"""
+        <p>Please complete the action by emailing to Security.</p>
+        <p>Note: This feature is still early in development, 
+        please reach out to Security if you have any feedback.</p>"""
     return render_template_string(template, message=message)
 
 
@@ -85,7 +85,6 @@ def assert_fingerprint_syntax(fingerprint):
     Raises:
         ValueError: if the fingerprint is empty, too long, too short or contains invalid characters
     """
-    fingerprint = fingerprint.split('_')[-1]
     if not fingerprint:
         raise ValueError('fingerprint invalid: None/empty')
 
