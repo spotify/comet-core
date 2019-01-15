@@ -45,9 +45,9 @@ def action_succeeded(message=None):
             response['msg'] = message
         return jsonify(response), 200
 
-    template = """<h2>{{ message }}</h2> 
-    <p>Note: This feature is still early in development, 
-    please reach out to Security if you have any feedback.</p>"""
+    template = '<h2>{{ message }}</h2> ' \
+               '<p>Note: This feature is still early in development, ' \
+               'please reach out to Security if you have any feedback.</p>'
     return render_template_string(template, message=message)
 
 
@@ -66,10 +66,10 @@ def action_failed(message=None):
             response['message'] = message
         return jsonify(response), 500
 
-    template = """<h2>Something went wrong: {{ message }}</h2> 
-    <p>Please complete the action by emailing to Security.</p>
-    <p>Note: This feature is still early in development, 
-    please reach out to Security if you have any feedback.</p>"""
+    template = '<h2>Something went wrong: {{ message }}</h2> ' \
+               '<p>Please complete the action by emailing to Security.</p>' \
+               '<p>Note: This feature is still early in development, ' \
+               'please reach out to Security if you have any feedback.</p>'
     return render_template_string(template, message=message)
 
 
