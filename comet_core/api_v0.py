@@ -85,6 +85,7 @@ def assert_fingerprint_syntax(fingerprint):
     Raises:
         ValueError: if the fingerprint is empty, too long, too short or contains invalid characters
     """
+    fingerprint = fingerprint.split('_')[-1]
     if not fingerprint:
         raise ValueError('fingerprint invalid: None/empty')
 
@@ -142,7 +143,8 @@ def dbhealth_check():
         get_db().get_latest_event_with_fingerprint('xxx')
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on dbhealth_check')
-        return action_failed('dbhealth_check failed')
+        response = {'status': 'error', 'message': 'dbhealth_check failed'}
+        return jsonify(response), 500
 
     return 'Comet-API-v0'
 
@@ -153,6 +155,8 @@ def dbhealth_check():
 def acceptrisk(fingerprint=None):
     """Accept risk for alerts with the given fingerprint (silence them).
 
+    Args:
+        fingerprint (str): the fingerprint to mark as acceptrisk
     Returns:
         str: the HTTP response string
     """
@@ -172,6 +176,8 @@ def acceptrisk(fingerprint=None):
 def snooze(fingerprint=None):
     """Snooze alerts with the given fingerprint for 30 days (silence them for 30 days).
 
+    Args:
+        fingerprint (str): the fingerprint to  snooze
     Returns:
         str: the HTTP response string
     """
@@ -192,6 +198,9 @@ def snooze(fingerprint=None):
 def falsepositive(fingerprint=None):
     """Mark alerts with the given fingerprint as falsepositive (silence them).
 
+    Args:
+        fingerprint (str): the fingerprint to mark as falsepositive
+
     Returns:
         str: the HTTP response string
     """
@@ -211,6 +220,9 @@ def falsepositive(fingerprint=None):
 def acknowledge(fingerprint=None):
     """Mark the alert with the given fingerprint as acknowledged (applies to real-time alerts only).
 
+    Args:
+        fingerprint (str): the fingerprint to acknowledge
+
     Returns:
         str: the HTTP response string
     """
@@ -229,6 +241,9 @@ def acknowledge(fingerprint=None):
 @requires_auth
 def escalate(fingerprint=None):
     """Mark the given fingerprint as manually escalated (applied to real-time alerts only).
+
+    Args:
+        fingerprint (str): the fingerprint to mark as escalated
 
     Returns:
         str: the HTTP response string
