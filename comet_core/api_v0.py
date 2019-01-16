@@ -30,47 +30,49 @@ bp = Blueprint('v0', __name__, url_prefix='/v0')  # pylint: disable=invalid-name
 LOG = logging.getLogger(__name__)
 
 
-def action_succeeded(message=None):
+def action_succeeded(message=None, status_code=200):
     """Generate html (for GET request) or json (for POST requests) response with a custom success message.
 
     Args:
         message (str): custom success message
+        status_code (int): the http status code to return
     Returns:
-        Union[str,Tuple[flask.Response, int]: rendered html code or json Response object and http code 200
+        Tuple[Union[str,flask.Response],int]: rendered html code or json Response object and http code
                                               with a success message
     """
     if request.method == 'POST':
         response = {'status': 'ok'}
         if message:
             response['msg'] = message
-        return jsonify(response), 200
+        return jsonify(response), status_code
 
     template = '<h2>{{ message }}</h2> ' \
                '<p>Note: This feature is still early in development, ' \
                'please reach out to Security if you have any feedback.</p>'
-    return render_template_string(template, message=message)
+    return render_template_string(template, message=message), status_code
 
 
-def action_failed(message=None):
+def action_failed(message=None, status_code=500):
     """Generate html (for GET request) or json (for POST requests) response with a custom failure message.
 
     Args:
         message (str): custom failure message
+        status_code (int): the http status code to return
     Returns:
-        Union[str,Tuple[flask.Response, int]]: rendered html code or json Response object and http code 500
-                                               with a failure message
+        Tuple[Union[str,flask.Response],int]: rendered html code or json Response object and http code
+                                              with an error message
     """
     if request.method == 'POST':
         response = {'status': 'error'}
         if message:
             response['message'] = message
-        return jsonify(response), 500
+        return jsonify(response), status_code
 
     template = '<h2>Something went wrong: {{ message }}</h2> ' \
                '<p>Please complete the action by emailing to Security.</p>' \
                '<p>Note: This feature is still early in development, ' \
                'please reach out to Security if you have any feedback.</p>'
-    return render_template_string(template, message=message)
+    return render_template_string(template, message=message), status_code
 
 
 def assert_fingerprint_syntax(fingerprint):
