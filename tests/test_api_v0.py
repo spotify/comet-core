@@ -118,14 +118,21 @@ def test_snooze_error(bad_client):
 
 def test_falsepositive(client):
     g.test_authorized_for = []
-    res = client.post('/v0/falsepositive', json={'fingerprint': ''})
-    assert res.json
+    res = client.get('/v0/falsepositive/splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    assert 'Thanks! We’ve marked this as a false positive' in res.data.decode('utf-8')
+
+
+def test_falsepositive_post(client):
+    g.test_authorized_for = []
+    res = client.post('/v0/falsepositive',
+                      json={'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'})
+    assert '{"msg":"Thanks! We\\u2019ve marked this as a false positive","status":"ok"}' \
+           in res.data.decode('utf-8')
 
 
 def test_falsepositive_error(bad_client):
-    res = bad_client.post('/v0/falsepositive')
-    assert res.json
-    assert res.status == '500 INTERNAL SERVER ERROR'
+    res = bad_client.get('/v0/falsepositive')
+    assert res.status == '405 METHOD NOT ALLOWED'
 
 
 def test_v0_root(client):
@@ -133,42 +140,66 @@ def test_v0_root(client):
     res = client.get('/v0/')
     assert res.data == b'Comet-API-v0'
 
-
 def test_dbhealth_check(client):
+    res = client.get('/v0/dbcheck')
+    assert res.data == b'Comet-API-v0'
+
+
+def test_dbhealth_check_error(client):
     with mock.patch('comet_core.api_v0.get_db') as mock_get_db:
         mock_get_db.side_effect = Exception('XOXO')
         res = client.get('/v0/dbcheck')
     assert res.json.get('status') == 'error'
 
-    res = client.get('/v0/dbcheck')
-    assert res.data == b'Comet-API-v0'
-
 
 def test_acknowledge(client):
     """Test the acknowledge endpoint works"""
     g.test_authorized_for = []
-    res = client.post('/v0/acknowledge', json={'fingerprint': ''})
-    assert res.json == {'status': 'ok'}
+    res = client.get('/v0/acknowledge/splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    assert 'Thanks for acknowledging!' in res.data.decode('utf-8')
+
+
+def test_acknowledge_post(client):
+    g.test_authorized_for = []
+    res = client.post('/v0/acknowledge',
+                      json={'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'})
+    assert '{"msg":"Thanks for acknowledging!","status":"ok"}' \
+           in res.data.decode('utf-8')
 
 
 def test_acknowledge_error_no_fingerprint_passed(client):
     """Test the acknowledge endpoint fails when no fingerprint passes"""
     g.test_authorized_for = []
-    res = client.post('/v0/acknowledge')
-    assert res.status == '500 INTERNAL SERVER ERROR'
-    assert res.json == {'status': 'error', 'msg': 'acknowledge failed'}
+    res = client.get('/v0/acknowledge')
+    assert res.status == '405 METHOD NOT ALLOWED'
 
 
 def test_escalate(client):
     """Test the escalate endpoint works"""
     g.test_authorized_for = []
-    res = client.post('/v0/escalate', json={'fingerprint': ''})
-    assert res.json == {'status': 'ok'}
+    res = client.get('/v0/escalate/splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    assert 'Thanks! This alert has been escalated' in res.data.decode('utf-8')
+
+
+def test_escalate_post(client):
+    g.test_authorized_for = []
+    res = client.post('/v0/escalate',
+                      json={'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'})
+    assert '{"msg":"Thanks! This alert has been escalated.","status":"ok"}' \
+           in res.data.decode('utf-8')
 
 
 def test_escalate_error(client):
     """Test escalation fails when when no fingerprint passes"""
     g.test_authorized_for = []
-    res = client.post('/v0/escalate')
-    assert res.json == \
-           {'msg': 'escalation real time alerts failed', 'status': 'error'}
+    res = client.get('/v0/escalate')
+    assert '405 METHOD NOT ALLOWED' in res.status
+
+
+def test_escalate_error_post(client):
+    """Test escalation fails when when no fingerprint passes"""
+    g.test_authorized_for = []
+    res = client.post('/v0/escalate',
+                     json={
+                         'fingerprint': 'splunk_4025ad30<script>'})
+    assert '500 INTERNAL SERVER ERROR' in res.status
