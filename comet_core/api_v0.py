@@ -142,8 +142,7 @@ def dbhealth_check():
         get_db().get_latest_event_with_fingerprint('xxx')
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on dbhealth_check')
-        response = {'status': 'error', 'message': 'dbhealth_check failed'}
-        return jsonify(response), 500
+        return jsonify({'status': 'error', 'msg': 'dbhealth_check failed'}), 500
 
     return 'Comet-API-v0'
 
