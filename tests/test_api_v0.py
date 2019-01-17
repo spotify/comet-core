@@ -29,7 +29,7 @@ def client():  # pylint: disable=missing-param-doc,missing-type-doc
     Yields:
         flask.testing.FlaskClient: a Flask testing client
     """
-    api = CometApi()
+    api = CometApi(hmac_secret='secret')
 
     @api.register_auth()
     def override():
@@ -118,8 +118,15 @@ def test_snooze_error(bad_client):
 
 def test_falsepositive(client):
     g.test_authorized_for = []
-    res = client.get('/v0/falsepositive/splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    res = client.get('/v0/falsepositive?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc'
+                     '&t=97244b15a21f45e002bbd0a225b8206b0a2e913866ff7545510f9b08dea5241f')
     assert 'Thanks! We’ve marked this as a false positive' in res.data.decode('utf-8')
+
+
+def test_falsepositive_no_token_passed(client):
+    g.test_authorized_for = []
+    res = client.get('/v0/falsepositive?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc')
+    assert res.status == '500 INTERNAL SERVER ERROR'
 
 
 def test_falsepositive_post(client):
@@ -132,13 +139,14 @@ def test_falsepositive_post(client):
 
 def test_falsepositive_error(bad_client):
     res = bad_client.get('/v0/falsepositive')
-    assert res.status == '405 METHOD NOT ALLOWED'
+    assert res.status == '500 INTERNAL SERVER ERROR'
 
 
 def test_v0_root(client):
     g.test_authorized_for = []
     res = client.get('/v0/')
     assert res.data == b'Comet-API-v0'
+
 
 def test_dbhealth_check(client):
     res = client.get('/v0/dbcheck')
@@ -155,8 +163,15 @@ def test_dbhealth_check_error(client):
 def test_acknowledge(client):
     """Test the acknowledge endpoint works"""
     g.test_authorized_for = []
-    res = client.get('/v0/acknowledge/splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    res = client.get('/v0/acknowledge?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc'
+                     '&t=97244b15a21f45e002bbd0a225b8206b0a2e913866ff7545510f9b08dea5241f')
     assert 'Thanks for acknowledging!' in res.data.decode('utf-8')
+
+
+def test_acknowledge_hmac_validation_failed(client):
+    res = client.get('/v0/acknowledge?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc'
+                     '&t=97244b15a21f45e002b2e913866ff7545510f9b08dea5241f')
+    assert res.status == '500 INTERNAL SERVER ERROR'
 
 
 def test_acknowledge_post(client):
@@ -171,13 +186,14 @@ def test_acknowledge_error_no_fingerprint_passed(client):
     """Test the acknowledge endpoint fails when no fingerprint passes"""
     g.test_authorized_for = []
     res = client.get('/v0/acknowledge')
-    assert res.status == '405 METHOD NOT ALLOWED'
+    assert res.status == '500 INTERNAL SERVER ERROR'
 
 
 def test_escalate(client):
     """Test the escalate endpoint works"""
     g.test_authorized_for = []
-    res = client.get('/v0/escalate/splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    res = client.get('/v0/escalate?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc'
+                     '&t=97244b15a21f45e002bbd0a225b8206b0a2e913866ff7545510f9b08dea5241f')
     assert 'Thanks! This alert has been escalated' in res.data.decode('utf-8')
 
 
@@ -189,11 +205,18 @@ def test_escalate_post(client):
            in res.data.decode('utf-8')
 
 
+def test_escalate_post_error(client):
+    g.test_authorized_for = []
+    res = client.post('/v0/escalate',
+                      json={'fingerprint': 'splunk'})
+    assert '500 INTERNAL SERVER ERROR' in res.status
+
+
 def test_escalate_error(client):
     """Test escalation fails when when no fingerprint passes"""
     g.test_authorized_for = []
     res = client.get('/v0/escalate')
-    assert '405 METHOD NOT ALLOWED' in res.status
+    assert '500 INTERNAL SERVER ERROR' in res.status
 
 
 def test_escalate_error_post(client):

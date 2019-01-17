@@ -226,7 +226,7 @@ def escalate():
     return action_succeeded('Thanks! This alert has been escalated.')
 
 
-# API ENDPOINTS 
+# API ENDPOINTS
 
 
 @bp.route('/')
