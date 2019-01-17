@@ -23,7 +23,7 @@ from datetime import timedelta, datetime
 from flask import Blueprint, g, jsonify, request, render_template_string
 
 from comet_core.api_helper import hydrate_open_issues, get_db, \
-    requires_auth
+    requires_auth, valid_token
 from comet_core.model import IgnoreFingerprintRecord
 
 bp = Blueprint('v0', __name__, url_prefix='/v0')  # pylint: disable=invalid-name
@@ -98,13 +98,15 @@ def assert_fingerprint_syntax(fingerprint):
         raise ValueError('fingerprint invalid: contains invalid characters')
 
 
-def get_and_check_fingerprint(fingerprint):
-    """Reads the fingerprint from a POST request json data if it was a POST request, also checks its syntax.
+def get_and_check_fingerprint():
+    """Reads the fingerprint from a POST request json data if it
+    was a POST request, also checks its syntax.
+    Also validate the token passed in the request
 
-    Args:
-        fingerprint (str): the fingerprint from a get request (will be returned if it was no POST request)
     Raises:
-        ValueError: if the POST request did not contain json data, or if the json data did not contain a fingerprint
+        ValueError: if the POST request did not contain json data,
+        or if the json data did not contain a fingerprint
+
     Returns:
         str: fingerprint
     """
@@ -116,9 +118,115 @@ def get_and_check_fingerprint(fingerprint):
             raise ValueError('No fingerprint parameter in json data.')
         fingerprint = request_json['fingerprint']
 
-    assert_fingerprint_syntax(fingerprint)
+        assert_fingerprint_syntax(fingerprint)
 
-    return fingerprint
+        return fingerprint
+
+    if request.method == 'GET':
+        if 'fg' not in request.args:
+            raise ValueError('No fingerprint parameter in URL.')
+        if 't' not in request.args:
+            raise ValueError('No token parameter in URL.')
+
+        fingerprint = request.args['fg']
+        token = request.args['t']
+
+        assert_fingerprint_syntax(fingerprint)
+
+        valid_token(fingerprint, token)
+
+        return fingerprint
+
+
+def acceptrisk():
+    """Accept risk for alerts with the given fingerprint (silence them).
+
+    Returns:
+        str: the HTTP response string
+    """
+    try:
+        fingerprint = get_and_check_fingerprint()
+        get_db().ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.ACCEPT_RISK)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception('Got exception on acceptrisk')
+        return action_failed('acceptrisk failed')
+
+    return action_succeeded('Alert successfully marked as accept risk.')
+
+
+def snooze():
+    """Snooze alerts with the given fingerprint for 30 days (silence them for 30 days).
+
+    Returns:
+        str: the HTTP response string
+    """
+    try:
+        fingerprint = get_and_check_fingerprint()
+        expires_at = datetime.utcnow() + timedelta(days=30)
+        get_db().ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.SNOOZE,
+                                          expires_at=expires_at)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception('Got exception on snooze')
+        return action_failed('snooze failed')
+
+    return action_succeeded('Alert successfully snoozed.')
+
+
+def acknowledge():
+    """Mark the alert with the given fingerprint as acknowledged (applies to real-time alerts only).
+
+    Returns:
+        str: the HTTP response string
+    """
+    try:
+        fingerprint = get_and_check_fingerprint()
+        get_db().ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.ACKNOWLEDGE)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception('Got exception on acknowledge')
+        return action_failed('acknowledgement failed for some reason')
+
+    return action_succeeded('Thanks for acknowledging!')
+
+
+def falsepositive():
+    """Mark alerts with the given fingerprint as falsepositive (silence them).
+
+    Returns:
+        str: the HTTP response string
+    """
+    try:
+        fingerprint = get_and_check_fingerprint()
+        get_db().ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.FALSE_POSITIVE)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception('Got exception on falsepositive')
+        return action_failed('Reporting as false positive failed.')
+
+    return action_succeeded('Thanks! We’ve marked this as a false positive')
+
+
+def escalate():
+    """Mark the given fingerprint as manually escalated (applied to real-time alerts only).
+
+    Returns:
+        str: the HTTP response string
+    """
+    try:
+        fingerprint = get_and_check_fingerprint()
+        # indication that the user addressed the alert and escalate.
+        get_db().ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.ESCALATE_MANUALLY)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception('Got exception on escalate real time alert')
+        return action_failed('Escalation failed for some reason')
+
+    return action_succeeded('Thanks! This alert has been escalated.')
+
+
+# API ENDPOINTS 
 
 
 @bp.route('/')
@@ -147,114 +255,129 @@ def dbhealth_check():
     return 'Comet-API-v0'
 
 
-@bp.route('/acceptrisk/<path:fingerprint>')
+@bp.route('/acceptrisk', methods=['GET'])
+def acceptrisk_get():
+    """This endpoint expose the acceptrisk functionality via GET request.
+    Doesn't required authentication because we are
+    handling the auth by validating the token passed in the request.
+    For details on the acceptrisk function see :func:`~comet_core.api_v0.acceptrisk`
+
+    Returns:
+        str: The response from the acceptrisk function
+    """
+    return acceptrisk()
+
+
 @bp.route('/acceptrisk', methods=['POST'])
 @requires_auth
-def acceptrisk(fingerprint=None):
-    """Accept risk for alerts with the given fingerprint (silence them).
+def acceptrisk_post():
+    """This endpoint expose the acceptrisk functionality via POST request.
+    For details on the acceptrisk function see :func:`~comet_core.api_v0.acceptrisk`
 
-    Args:
-        fingerprint (str): the fingerprint to mark as acceptrisk
     Returns:
-        str: the HTTP response string
+        str: The response from the acceptrisk function
     """
-    try:
-        fingerprint = get_and_check_fingerprint(fingerprint)
-        get_db().ignore_event_fingerprint(fingerprint, IgnoreFingerprintRecord.ACCEPT_RISK)
-    except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on acceptrisk')
-        return action_failed('acceptrisk failed')
-
-    return action_succeeded('Alert successfully marked as accept risk.')
+    return acceptrisk()
 
 
-@bp.route('/snooze/<path:fingerprint>')
+@bp.route('/snooze', methods=['GET'])
+def snooze_get():
+    """This endpoint expose the snooze functionality via GET request.
+    Doesn't required authentication because we are
+    handling the auth by validating the token passed in the request.
+    For details on the snooze function see :func:`~comet_core.api_v0.snooze`
+
+    Returns:
+        str: The response from the snooze function
+    """
+    return snooze()
+
+
 @bp.route('/snooze', methods=['POST'])
 @requires_auth
-def snooze(fingerprint=None):
-    """Snooze alerts with the given fingerprint for 30 days (silence them for 30 days).
+def snooze_post():
+    """This endpoint expose the snooze functionality via POST request.
+    For details on the snooze function see :func:`~comet_core.api_v0.snooze`
 
-    Args:
-        fingerprint (str): the fingerprint to  snooze
     Returns:
-        str: the HTTP response string
+        str: The response from the snooze function
     """
-    try:
-        fingerprint = get_and_check_fingerprint(fingerprint)
-        expires_at = datetime.utcnow() + timedelta(days=30)
-        get_db().ignore_event_fingerprint(fingerprint, IgnoreFingerprintRecord.SNOOZE, expires_at=expires_at)
-    except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on snooze')
-        return action_failed('snooze failed')
-
-    return action_succeeded('Alert successfully snoozed.')
+    return snooze()
 
 
-@bp.route('/falsepositive/<path:fingerprint>')
+@bp.route('/falsepositive', methods=['GET'])
+def falsepositive_get():
+    """This endpoint expose the falsepositive functionality via GET request.
+    Doesn't required authentication because we are
+    handling the auth by validating the token passed in the request.
+    For details on the falsepositive function see :func:`~comet_core.api_v0.falsepositive`
+
+    Returns:
+        str: The response from the falsepositive function
+    """
+    return falsepositive()
+
+
 @bp.route('/falsepositive', methods=['POST'])
 @requires_auth
-def falsepositive(fingerprint=None):
-    """Mark alerts with the given fingerprint as falsepositive (silence them).
-
-    Args:
-        fingerprint (str): the fingerprint to mark as falsepositive
+def falsepositive_post():
+    """This endpoint expose the falsepositive functionality via POST request.
+    For details on the falsepositive function see :func:`~comet_core.api_v0.falsepositive`
 
     Returns:
-        str: the HTTP response string
+        str: The response from the falsepositive function
     """
-    try:
-        fingerprint = get_and_check_fingerprint(fingerprint)
-        get_db().ignore_event_fingerprint(fingerprint, IgnoreFingerprintRecord.FALSE_POSITIVE)
-    except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on falsepositive')
-        return action_failed('Reporting as false positive failed.')
-
-    return action_succeeded('Thanks! We’ve marked this as a false positive')
+    return falsepositive()
 
 
-@bp.route('/acknowledge/<path:fingerprint>')
+@bp.route('/acknowledge', methods=['GET'])
+def acknowledge_get():
+    """This endpoint expose the acknowledge functionality via GET request.
+    Doesn't required authentication because we are
+    handling the auth by validating the token passed in the request.
+    For details on the acknowledge function see :func:`~comet_core.api_v0.acknowledge`
+
+    Returns:
+        str: The response from the acknowledge function
+    """
+    return acknowledge()
+
+
 @bp.route('/acknowledge', methods=['POST'])
 @requires_auth
-def acknowledge(fingerprint=None):
-    """Mark the alert with the given fingerprint as acknowledged (applies to real-time alerts only).
-
-    Args:
-        fingerprint (str): the fingerprint to acknowledge
+def acknowledge_post():
+    """This endpoint expose the acknowledge functionality via POST request.
+    For details on the acknowledge function see :func:`~comet_core.api_v0.acknowledge`
 
     Returns:
-        str: the HTTP response string
+        str: The response from the acknowledge function
     """
-    try:
-        fingerprint = get_and_check_fingerprint(fingerprint)
-        get_db().ignore_event_fingerprint(fingerprint, IgnoreFingerprintRecord.ACKNOWLEDGE)
-    except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on acknowledge')
-        return action_failed('acknowledgement failed for some reason')
-
-    return action_succeeded('Thanks for acknowledging!')
+    return acknowledge()
 
 
-@bp.route('/escalate/<path:fingerprint>')
+@bp.route('/escalate', methods=['GET'])
+def escalate_get():
+    """This endpoint expose the escalate functionality via GET request.
+    Doesn't required authentication because we are
+    handling the auth by validating the token passed in the request.
+    For details on the escalate function see :func:`~comet_core.api_v0.escalate`
+
+    Returns:
+        str: The response from the escalate function
+    """
+    return escalate()
+
+
 @bp.route('/escalate', methods=['POST'])
 @requires_auth
-def escalate(fingerprint=None):
-    """Mark the given fingerprint as manually escalated (applied to real-time alerts only).
-
-    Args:
-        fingerprint (str): the fingerprint to mark as escalated
+def escalate_post():
+    """This endpoint expose the escalate functionality via POST request.
+    For details on the escalate function see :func:`~comet_core.api_v0.escalate`
 
     Returns:
-        str: the HTTP response string
+        str: The response from the escalate function
     """
-    try:
-        fingerprint = get_and_check_fingerprint(fingerprint)
-        # indication that the user addressed the alert and escalate.
-        get_db().ignore_event_fingerprint(fingerprint, IgnoreFingerprintRecord.ESCALATE_MANUALLY)
-    except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on escalate real time alert')
-        return action_failed('Escalation failed for some reason')
-
-    return action_succeeded('Thanks! This alert has been escalated.')
+    return escalate()
 
 
 @bp.route('/issues')

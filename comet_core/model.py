@@ -115,6 +115,17 @@ class EventRecord(BaseRecord):
         self.owner_email_overridden = False
         super().__init__(*args, **kwargs)
 
+    def update_metadata(self, metadata):
+        """Update optional metadata for the event.
+
+        Args:
+            metadata (dict): arbitrary metadata for the event
+        """
+        if self.event_metadata:
+            self.event_metadata.update(metadata)
+        else:
+            self.event_metadata = metadata
+
 
 class IgnoreFingerprintRecord(BaseRecord):
     """Acceptedrisk model.
