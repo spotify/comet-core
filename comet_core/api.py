@@ -32,6 +32,7 @@ class CometApi():
         database_uri (str): the database URI to use
         host (str): the IP to bind to
         port (int): the port to bind to
+        hmac_secret (str): the server secret to use in GET requests auth
     """
 
     # pylint: disable=dangerous-default-value
@@ -39,14 +40,15 @@ class CometApi():
                  cors_origins=[],
                  database_uri='sqlite://',
                  host='0.0.0.0',
-                 port=5000, **kwargs):
+                 port=5000,
+                 hmac_secret=''):
         self.cors_origins = cors_origins
         self.database_uri = database_uri
         self.host = host
         self.port = port
         self.auth_func = None
         self.hydrator_func = None
-        self.hmac_secret = kwargs.get('hmac_secret', '')
+        self.hmac_secret = hmac_secret
 
     def register_auth(self):
         """Used as a decorator to register an auth function

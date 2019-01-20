@@ -90,7 +90,7 @@ def valid_token(fingerprint, token):
     hmac_secret = current_app.config.get('hmac_secret')
     current_digest = hmac.new(bytes(hmac_secret, 'utf-8'),
                               msg=bytes(fingerprint, 'utf-8'),
-                              digestmod=hashlib.sha3_256).hexdigest()
+                              digestmod=hashlib.sha256).hexdigest()
     if not hmac.compare_digest(bytes(current_digest, 'utf-8'),
                                bytes(token, 'utf-8')):
         raise ValueError('Invalid token for the given fingerprint.')
