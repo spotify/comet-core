@@ -116,10 +116,13 @@ def test_snooze_error(bad_client):
     assert res.status == '500 INTERNAL SERVER ERROR'
 
 
+get_request_args = '?fg=forseti_f0743042e3bbea4a1b163f5accd4c366' \
+                   '&t=7ec8a1ee4308d2d07f71fd5a1c844582cfcca56e915c06fc9518ad5e22c5e718'
+
+
 def test_falsepositive(client):
     g.test_authorized_for = []
-    res = client.get('/v0/falsepositive?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc'
-                     '&t=97244b15a21f45e002bbd0a225b8206b0a2e913866ff7545510f9b08dea5241f')
+    res = client.get('/v0/falsepositive' + get_request_args)
     assert 'Thanks! We’ve marked this as a false positive' in res.data.decode('utf-8')
 
 
@@ -163,8 +166,7 @@ def test_dbhealth_check_error(client):
 def test_acknowledge(client):
     """Test the acknowledge endpoint works"""
     g.test_authorized_for = []
-    res = client.get('/v0/acknowledge?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc'
-                     '&t=97244b15a21f45e002bbd0a225b8206b0a2e913866ff7545510f9b08dea5241f')
+    res = client.get('/v0/acknowledge' + get_request_args)
     assert 'Thanks for acknowledging!' in res.data.decode('utf-8')
 
 
@@ -192,8 +194,7 @@ def test_acknowledge_error_no_fingerprint_passed(client):
 def test_escalate(client):
     """Test the escalate endpoint works"""
     g.test_authorized_for = []
-    res = client.get('/v0/escalate?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc'
-                     '&t=97244b15a21f45e002bbd0a225b8206b0a2e913866ff7545510f9b08dea5241f')
+    res = client.get('/v0/escalate' + get_request_args)
     assert 'Thanks! This alert has been escalated' in res.data.decode('utf-8')
 
 
