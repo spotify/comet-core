@@ -120,7 +120,7 @@ def get_and_check_fingerprint():
         assert_fingerprint_syntax(fingerprint)
 
     if request.method == 'GET':
-        if 'fg' not in request.args:
+        if 'fp' not in request.args:
             raise ValueError('No fingerprint parameter in URL.')
         if 't' not in request.args:
             raise ValueError('No token parameter in URL.')
