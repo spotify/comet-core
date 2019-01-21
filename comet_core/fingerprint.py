@@ -15,9 +15,13 @@
 """Helper function to compute the fingerprint of alerts."""
 
 import collections
+import hashlib
+import hmac
 import json
 from copy import deepcopy
 from hashlib import shake_256
+
+from flask import current_app
 
 HASH_BYTES = 16  # 128 bits of entropy, will result in 32 character hexdigest string
 
@@ -98,3 +102,20 @@ def str_to_hash(input_str):
     input_bytes = input_str.encode('utf-8')
     hash_str = shake_256(input_bytes).hexdigest(HASH_BYTES)
     return hash_str
+
+
+def fingerprint_hmac(fingerprint):
+    """Generate an hmac for the given fingerprint.
+
+    Can be used for authenticating
+
+    Args:
+        fingerprint (str): fingerprint to generate hmac for
+
+    Returns:
+        str: hmac as hexdigest str
+
+    """
+
+    hmac_secret = current_app.config.get('hmac_secret')
+    return hmac.new(bytes(hmac_secret, 'utf-8'), msg=bytes(fingerprint, 'utf-8'), digestmod=hashlib.sha256).hexdigest()

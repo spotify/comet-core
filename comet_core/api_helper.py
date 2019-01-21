@@ -20,6 +20,7 @@ from functools import wraps
 
 from flask import g, Response, current_app
 from comet_core.data_store import DataStore
+from fingerprint import fingerprint_hmac
 
 LOG = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ def requires_auth(f):
     return decorated
 
 
-def valid_token(fingerprint, token):
+def assert_valid_token(fingerprint, token):
     """
     Check if the token given in the request is valid by comparing
     to the calculated API token.
@@ -81,18 +82,9 @@ def valid_token(fingerprint, token):
         fingerprint (str): the fingerprint to compute the API token with
         token (str): the token to validate
 
-    Return:
-        True (bool): if the token is valid
-
     Raises:
         ValueError: if the token is not valid
     """
-    hmac_secret = current_app.config.get('hmac_secret')
-    current_digest = hmac.new(bytes(hmac_secret, 'utf-8'),
-                              msg=bytes(fingerprint, 'utf-8'),
-                              digestmod=hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(bytes(current_digest, 'utf-8'),
-                               bytes(token, 'utf-8')):
+    current_digest = fingerprint_hmac(fingerprint)
+    if not hmac.compare_digest(bytes(current_digest, 'utf-8'), bytes(token, 'utf-8')):
         raise ValueError('Invalid token for the given fingerprint.')
-
-    return True

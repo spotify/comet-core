@@ -22,8 +22,7 @@ from datetime import timedelta, datetime
 
 from flask import Blueprint, g, jsonify, request, render_template_string
 
-from comet_core.api_helper import hydrate_open_issues, get_db, \
-    requires_auth, valid_token
+from comet_core.api_helper import hydrate_open_issues, get_db, requires_auth, assert_valid_token
 from comet_core.model import IgnoreFingerprintRecord
 
 bp = Blueprint('v0', __name__, url_prefix='/v0')  # pylint: disable=invalid-name
@@ -131,7 +130,7 @@ def get_and_check_fingerprint():
 
         assert_fingerprint_syntax(fingerprint)
 
-        valid_token(fingerprint, token)
+        assert_valid_token(fingerprint, token)
 
     return fingerprint
 
