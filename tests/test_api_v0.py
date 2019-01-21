@@ -122,7 +122,7 @@ def test_snooze_error(bad_client):
 
 # args for the GET requests
 get_request_args = \
-    '?fg=forseti_f0743042e3bbea4a1b163f5accd4c366' \
+    '?fp=forseti_f0743042e3bbea4a1b163f5accd4c366' \
     '&t=7ec8a1ee4308d2d07f71fd5a1c844582cfcca56e915c06fc9518ad5e22c5e718'
 post_json_data = {'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'}
 
@@ -139,7 +139,7 @@ def test_falsepositive_no_token_passed(client):
     """Test the falsepositive endpoint fails when
        the token is not passed in the args"""
     g.test_authorized_for = []
-    res = client.get('/v0/falsepositive?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc')
+    res = client.get('/v0/falsepositive?fp=splunk_82998ef6bb3db9dff3dsfdsfsdc')
     assert res.status == '500 INTERNAL SERVER ERROR'
 
 
@@ -190,7 +190,7 @@ def test_acknowledge(client):
 def test_acknowledge_hmac_validation_failed(client):
     """Test the acknowledge endpoint fails when the fingerprint
        doesn't match the token passed"""
-    res = client.get('/v0/acknowledge?fg=splunk_82998ef6bb3db9dff3dsfdsfsdc'
+    res = client.get('/v0/acknowledge?fp=splunk_82998ef6bb3db9dff3dsfdsfsdc'
                      '&t=97244b15a21f45e002b2e913866ff7545510f9b08dea5241f')
     assert res.status == '500 INTERNAL SERVER ERROR'
 
