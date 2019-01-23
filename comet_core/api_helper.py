@@ -85,6 +85,5 @@ def assert_valid_token(fingerprint, token):
         ValueError: if the token is not valid
     """
     expected_token = fingerprint_hmac(fingerprint, current_app.config['hmac_secret'])
-    LOG.debug('got fp=%s, t=%s, expected t=%s', fingerprint, token, expected_token)
     if not hmac.compare_digest(bytes(expected_token, 'utf-8'), bytes(token, 'utf-8')):
         raise ValueError('Invalid token for the given fingerprint.')
