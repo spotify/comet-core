@@ -450,7 +450,7 @@ class Comet:
                         source_type_config['alerts'].get(search_name, {})
                     escalate_cadence = \
                         alert_properties.get('escalate_cadence',
-                                            default_escalate_cadence)
+                                             default_escalate_cadence)
                     event_sent_at = event.sent_at
 
                     # when is earliest time to escalate the specific event
