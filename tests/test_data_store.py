@@ -466,3 +466,76 @@ def test_remove_duplicate_events():
     assert three in records
     assert one not in records
     assert len(records) == 2
+
+
+@pytest.fixture
+def ds_instance():
+    yield comet_core.data_store.DataStore('sqlite://')
+
+
+@pytest.fixture
+def non_addressed_event():
+    # event sent but missing in the ignore_event table to 
+    # indicate that it wasn't addressed by the user
+    event = EventRecord(received_at=datetime(2018, 7, 7, 9, 0, 0),
+                      source_type='datastoretest',
+                      owner='a',
+                      sent_at=datetime(2018, 7, 7, 9, 0, 0),
+                      data={})
+    event.fingerprint = 'f1'
+    return event
+
+
+@pytest.fixture
+def addressed_event(ds_instance):
+    # event was sent and addressed (ack by the user)
+    ack_event = EventRecord(received_at=datetime(2018, 7, 7, 9, 30, 0),
+                      source_type='datastoretest',
+                      owner='a',
+                      sent_at=datetime(2018, 7, 7, 9, 30, 0),
+                      data={})
+    ack_event.fingerprint = 'f2'
+    ds_instance.ignore_event_fingerprint(ack_event.fingerprint,
+                              ignore_type=IgnoreFingerprintRecord.ACKNOWLEDGE)
+    return ack_event
+
+
+@pytest.fixture
+def event_to_escalate(ds_instance):
+    # event was sent and addressed (escalated by the user)
+    escalated_event = EventRecord(received_at=datetime(2018, 7, 7, 9, 30, 0),
+                      source_type='datastoretest',
+                      owner='a',
+                      sent_at=datetime(2018, 7, 7, 9, 30, 0),
+                      data={})
+    escalated_event.fingerprint = 'f3'
+    ds_instance.ignore_event_fingerprint(escalated_event.fingerprint,
+                              ignore_type=IgnoreFingerprintRecord.ESCALATE_MANUALLY)
+    return escalated_event
+
+
+@pytest.fixture
+def ds_with_real_time_events(ds_instance, addressed_event, non_addressed_event,
+                             event_to_escalate):
+    ds_instance.add_record(addressed_event)
+    ds_instance.add_record(non_addressed_event)
+    ds_instance.add_record(event_to_escalate)
+    return ds_instance
+
+
+def test_get_real_time_events_did_not_addressed(ds_with_real_time_events,
+                                                non_addressed_event):
+    source_type = 'datastoretest'
+    non_addressed_events = \
+        ds_with_real_time_events.get_events_did_not_addressed(source_type)
+
+    assert non_addressed_event in non_addressed_events
+
+
+def test_get_real_time_events_need_escalation(ds_with_real_time_events,
+                                              event_to_escalate):
+    source_type = 'datastoretest'
+    events_to_escalate = \
+        ds_with_real_time_events.get_events_need_escalation(source_type)
+
+    assert event_to_escalate in events_to_escalate

@@ -118,6 +118,28 @@ class DataStore:
 
         return []
 
+    def get_events_did_not_addressed(self, source_type):
+        """Get all events who we sent to the user +
+           the event haven't escalated already
+           and do not exist in IgnoreFingerprintRecord database.
+           That means that the user didn't addressed those events.
+        Args:
+            source_type (str): source type to filter the search by.
+        Returns:
+            list: list of `EventRecord`s not addressed,
+            or empty list if there is nothing to return
+        """
+        non_addressed_events = self.session.query(EventRecord). \
+            filter((EventRecord.sent_at.isnot(None)) &
+                   (EventRecord.escalated_at.is_(None)) &
+                   (EventRecord.source_type == source_type)). \
+            outerjoin(IgnoreFingerprintRecord,
+                      EventRecord.fingerprint ==
+                      IgnoreFingerprintRecord.fingerprint). \
+            filter(IgnoreFingerprintRecord.fingerprint.is_(None)).all()
+
+        return non_addressed_events
+
     def check_any_issue_needs_reminder(self, search_timedelta, records):
         """Checks if the issue among the provided ones with the most recent sent_at value has that value older than the
         `search_timedelta`, that is, a reminder should be sent for the issue.
@@ -329,3 +351,23 @@ class DataStore:
             return True
 
         return most_recent_processed[0] <= datetime.utcnow() - new_threshold
+
+    def get_events_need_escalation(self, source_type):
+        """
+        Get all the events that the end user escalate manually
+        and weren't escalated already by comet.
+        Args:
+            source_type (str): source type to filter the search by.
+        Returns:
+            list: list of `EventRecord`s to escalate.
+        """
+        events_to_escalate = self.session.query(EventRecord). \
+            filter((EventRecord.sent_at.isnot(None)) &
+                   (EventRecord.escalated_at.is_(None)) &
+                   (EventRecord.source_type == source_type)). \
+            outerjoin(IgnoreFingerprintRecord,
+                      EventRecord.fingerprint ==
+                      IgnoreFingerprintRecord.fingerprint). \
+            filter(IgnoreFingerprintRecord.ignore_type ==
+                   IgnoreFingerprintRecord.ESCALATE_MANUALLY).all()
+        return events_to_escalate

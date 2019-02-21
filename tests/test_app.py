@@ -23,7 +23,7 @@ from marshmallow import fields, Schema
 
 from comet_core import Comet
 from comet_core.app import EventContainer
-from comet_core.model import EventRecord
+from comet_core.model import EventRecord, IgnoreFingerprintRecord
 
 # Helpers for test_process_unsent_events_recipient_override
 RECORD_OWNER = 'not-this-one@test.com'
@@ -276,3 +276,138 @@ def test_run(app):
         app.run()
     mocked_sleep.assert_called_once()
     app.process_unprocessed_events.assert_called_once()
+
+
+@freeze_time('2018-05-09 09:00:00')
+# pylint: disable=missing-docstring
+def test_process_unprocessed_real_time_events():
+    app = Comet()
+    app.register_parser('real_time_source', json)
+    app.register_parser('datastoretest', json)
+
+    app.register_real_time_source('real_time_source')
+
+    real_time_router = mock.Mock()
+    router = mock.Mock()
+    escalator = mock.Mock()
+    app.register_router('real_time_source', func=real_time_router)
+    app.register_router(func=router)
+    app.register_escalator(func=escalator)
+
+    check_user = 'an_owner'
+    already_processed_user = 'already_processed_owner'
+
+    # already processed regular event
+    app.data_store.add_record(
+        EventRecord(id=1,
+                    received_at=datetime.utcnow() - timedelta(days=5),
+                    source_type='datastoretest',
+                    owner=already_processed_user,
+                    data={},
+                    processed_at=datetime.utcnow() - timedelta(days=5),
+                    fingerprint='f1'))
+
+    # already processed real time event
+    app.data_store.add_record(
+        EventRecord(id=2,
+                    received_at=datetime.utcnow() - timedelta(days=5),
+                    source_type='real_time_source',
+                    owner=already_processed_user,
+                    processed_at=datetime.utcnow() - timedelta(days=5),
+                    data={},
+                    fingerprint='f2'))
+
+    # not processed real time event
+    app.data_store.add_record(
+        EventRecord(id=3,
+                    received_at=datetime.utcnow() - timedelta(days=3),
+                    source_type='real_time_source',
+                    owner=check_user,
+                    data={},
+                    fingerprint='f3'))
+
+    # real time event needs escalation
+    app.data_store.add_record(
+        EventRecord(id=4,
+                    received_at=datetime.utcnow() - timedelta(days=3),
+                    source_type='real_time_source',
+                    owner=check_user,
+                    data={},
+                    fingerprint='f4'))
+
+    app.data_store.ignore_event_fingerprint('f4',
+                                            IgnoreFingerprintRecord.ESCALATE_MANUALLY)
+
+    app.process_unprocessed_events()
+    assert real_time_router.call_count == 1
+    # route real time alert with both routers.
+    assert router.call_count == 1
+    assert real_time_router.call_args[0][2][0].owner == check_user
+    assert escalator.call_count == 1
+
+
+def test_handle_non_addressed_events():
+    app = Comet()
+    app.register_parser('real_time_source', json)
+    app.register_parser('real_time_source2', json)
+    app.register_real_time_source('real_time_source')
+    app.register_real_time_source('real_time_source2')
+
+    app.set_config('real_time_source', {'alerts': {
+        'alert search name':
+            {
+                'escalate_cadence': timedelta(minutes=45),
+                'template': 'alerts_template'
+            }
+    }})
+    app.set_config('real_time_source2', {'alerts': {
+        'alert search name':
+            {
+                'escalate_cadence': timedelta(minutes=45),
+                'template': 'alerts_template'
+            }
+    }})
+    escalator = mock.Mock()
+    escalator2 = mock.Mock()
+    app.register_escalator('real_time_source', func=escalator)
+    app.register_escalator('real_time_source2', func=escalator2)
+
+    already_processed_user = 'already_processed_owner'
+
+    # already processed real time event - needs escalation
+    app.data_store.add_record(
+        EventRecord(id=2,
+                    received_at=datetime.utcnow() - timedelta(hours=1),
+                    source_type='real_time_source',
+                    owner=already_processed_user,
+                    processed_at=datetime.utcnow() - timedelta(hours=1),
+                    sent_at=datetime.utcnow() - timedelta(hours=1),
+                    data={'search_name': 'alert search name',
+                          'name': 'needs escalation'},
+                    fingerprint='f2'))
+
+    # already processed real time event - still early for escalation
+    # the event sent 35 min ago.
+    app.data_store.add_record(
+        EventRecord(id=3,
+                    received_at=datetime.utcnow() - timedelta(hours=1),
+                    source_type='real_time_source2',
+                    owner=already_processed_user,
+                    processed_at=datetime.utcnow() - timedelta(minutes=35),
+                    sent_at=datetime.utcnow() - timedelta(minutes=35),
+                    data={'search_name': 'alert search name',
+                          'name': 'doesnt need escalation'},
+                    fingerprint='f3'))
+
+    app.handle_non_addressed_events()
+    assert escalator.call_count == 1
+    assert escalator2.call_count == 0
+
+
+def test_register_real_time_source(app):
+    assert not app.real_time_sources
+
+    app.register_real_time_source('test1')
+    app.register_real_time_source('test2')
+
+    assert len(app.real_time_sources) == 2
