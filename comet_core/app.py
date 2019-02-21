@@ -445,16 +445,17 @@ class Comet:
 
             for event in non_addressed_events:
                 search_name = event.data.get('search_name')
-                alert_properties = \
-                    source_type_config['alerts'].get(search_name, {})
-                escalate_cadence = \
-                    alert_properties.get('escalate_cadence',
-                                         default_escalate_cadence)
-                event_sent_at = event.sent_at
+                if search_name is not None:
+                    alert_properties = \
+                        source_type_config['alerts'].get(search_name, {})
+                    escalate_cadence = \
+                        alert_properties.get('escalate_cadence',
+                                            default_escalate_cadence)
+                    event_sent_at = event.sent_at
 
-                # when is earliest time to escalate the specific event
-                if event_sent_at <= datetime.utcnow() - escalate_cadence:
-                    events_needs_escalation.append(event)
+                    # when is earliest time to escalate the specific event
+                    if event_sent_at <= datetime.utcnow() - escalate_cadence:
+                        events_needs_escalation.append(event)
 
             self._handle_events_need_escalation(source_type,
                                                 events_needs_escalation)
