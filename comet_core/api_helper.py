@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """API helpers"""
-
+import hmac
 import logging
 from functools import wraps
 
 from flask import g, Response, current_app
+
 from comet_core.data_store import DataStore
+from comet_core.fingerprint import fingerprint_hmac
 
 LOG = logging.getLogger(__name__)
 
@@ -69,3 +71,19 @@ def requires_auth(f):
         return f(*args, **kwargs)
 
     return decorated
+
+
+def assert_valid_token(fingerprint, token):
+    """
+    Check if the token given in the request is valid by comparing to the calculated API token.
+
+    Args:
+        fingerprint (str): the fingerprint to compute the API token with
+        token (str): the token to validate
+
+    Raises:
+        ValueError: if the token is not valid
+    """
+    expected_token = fingerprint_hmac(fingerprint, current_app.config['hmac_secret'])
+    if not hmac.compare_digest(bytes(expected_token, 'utf-8'), bytes(token, 'utf-8')):
+        raise ValueError('Invalid token for the given fingerprint.')

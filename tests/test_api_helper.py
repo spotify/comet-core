@@ -16,7 +16,8 @@
 import pytest
 
 from comet_core.api import CometApi
-from comet_core.api_helper import get_db, hydrate_open_issues
+from comet_core.api_helper import get_db, hydrate_open_issues, assert_valid_token
+from comet_core.fingerprint import fingerprint_hmac
 
 
 @pytest.fixture
@@ -36,3 +37,12 @@ def test_no_hydrator():
     api = CometApi()
     with api.create_app().app_context():
         assert not hydrate_open_issues([])
+
+
+def test_assert_valid_token():
+    fp = 'test_fingerprint'
+    test_hmac_secret = 'secret'
+    token = fingerprint_hmac(fp, test_hmac_secret)
+    api = CometApi(hmac_secret=test_hmac_secret)
+    with api.create_app().app_context():
+        assert_valid_token(fp, token)
