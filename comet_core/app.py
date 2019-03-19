@@ -192,7 +192,8 @@ class Comet:
 
         # Filter event
         filter_event = self.filters.get(source_type)
-        event = filter_event(event)
+        if filter_event:
+            event = filter_event(event)
 
         # Add to datastore
         if event:
