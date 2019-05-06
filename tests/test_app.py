@@ -135,11 +135,34 @@ def test_message_callback(app):
     hydrator_mock = mock.Mock()
     app.register_hydrator('test', hydrator_mock)
 
+    filter_return_value = EventContainer('test', {"a": "b"})
+    filter_mock = mock.Mock(return_value=filter_return_value)
+    app.register_filter('test', filter_mock)
+
     assert not app.message_callback('test1', '{}')
     assert not app.message_callback('test', '{ "c": "d" }')
 
     app.message_callback('test', '{ "a": "b" }')
     assert hydrator_mock.called
+    assert filter_mock.called
+    assert filter_mock.return_value, filter_return_value
+
+
+def test_message_callback_filter(app):
+    @app.register_parser('test')
+    class TestParser:
+        def loads(self, msg):
+            ev = json.loads(msg)
+            if 'a' in ev:
+                return ev, None
+            return None, 'fail'
+
+    filter_mock = mock.Mock(return_value=None)
+    app.register_filter('test', filter_mock)
+
+    app.message_callback('test', '{ "a": "b" }')
+    assert filter_mock.called
+    assert filter_mock.return_value is None
 
 
 def test_register_input(app):
@@ -182,6 +205,22 @@ def test_register_hydrator(app):
     # Add another
     app.register_hydrator('test2', test_hydrator)
     assert len(app.hydrators) == 2, app.hydrators
+
+
+def test_register_filter(app):
+    assert not app.filters
+
+    @app.register_filter('test1')
+    def test_filter(*args):
+        pass
+
+    # Override existing
+    app.register_filter('test1', test_filter)
+    assert len(app.filters) == 1, app.filters
+
+    # Add another
+    app.register_filter('test2', test_filter)
+    assert len(app.filters) == 2, app.filters
 
 
 def test_set_config(app):
