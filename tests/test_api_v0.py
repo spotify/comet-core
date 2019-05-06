@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test api_helper module"""
-from unittest.mock import Mock, patch
 
 import pytest
 from flask import g, Response
@@ -29,7 +28,7 @@ def client():  # pylint: disable=missing-param-doc,missing-type-doc
     Yields:
         flask.testing.FlaskClient: a Flask testing client
     """
-    api = CometApi()
+    api = CometApi(hmac_secret='secret')
 
     @api.register_auth()
     def override():
@@ -67,7 +66,8 @@ def test_hello(client):  # pylint: disable=missing-param-doc,missing-type-doc,re
 
 # pylint: disable=missing-param-doc,missing-type-doc,redefined-outer-name
 def test_get_issues(client, test_db):
-    """"Feed all test messages to the get_issues function to see that they get rendered correctly"""
+    """"Feed all test messages to the get_issues function
+     to see that they get rendered correctly"""
     g.user = 'testuser'
     with mock.patch('comet_core.api_v0.get_db', return_value=test_db):
         g.test_authorized_for = ['non@existant.com']
@@ -90,6 +90,7 @@ def test_get_issues(client, test_db):
 
 
 def test_get_issues_no_hydrator():
+    """Test the get_issues endpoint still works while there is no hydrator"""
     app = CometApi().create_app()
     with app.app_context():
         client = app.test_client()
@@ -97,6 +98,7 @@ def test_get_issues_no_hydrator():
 
 
 def test_acceptrisk(client):
+    """Test the accesprtrisk POST endpoint is working"""
     g.test_authorized_for = []
     res = client.post('/v0/acceptrisk', json={'fingerprint': ''})
     assert res.json
@@ -105,47 +107,73 @@ def test_acceptrisk(client):
 
 
 def test_snooze(client):
+    """Test the snooze POST endpoint is working"""
     g.test_authorized_for = []
     res = client.post('/v0/snooze', json={'fingerprint': ''})
     assert res.json
 
 
 def test_snooze_error(bad_client):
+    """Test the snooze endpoint fails when no data is passed """
     res = bad_client.post('/v0/snooze')
     assert res.json
     assert res.status == '500 INTERNAL SERVER ERROR'
 
 
+# args for the GET requests
+get_request_args = \
+    '?fp=forseti_f0743042e3bbea4a1b163f5accd4c366' \
+    '&t=7ec8a1ee4308d2d07f71fd5a1c844582cfcca56e915c06fc9518ad5e22c5e718'
+post_json_data = {'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'}
+
+
 def test_falsepositive(client):
+    """Test the falsepositive GET endpoint works"""
     g.test_authorized_for = []
-    res = client.get('/v0/falsepositive/splunk_4025ad523c2a94e5a13b1c8aef8c5730')
-    assert 'Thanks! We’ve marked this as a false positive' in res.data.decode('utf-8')
+    res = client.get('/v0/falsepositive' + get_request_args)
+    assert 'Thanks! We’ve marked this as a false positive' in \
+           res.data.decode('utf-8')
+
+
+def test_falsepositive_no_token_passed(client):
+    """Test the falsepositive endpoint fails when
+       the token is not passed in the args"""
+    g.test_authorized_for = []
+    res = client.get('/v0/falsepositive?fp=splunk_82998ef6bb3db9dff3dsfdsfsdc')
+    assert res.status == '500 INTERNAL SERVER ERROR'
 
 
 def test_falsepositive_post(client):
+    """Test the falsepositive POST endpoint works"""
     g.test_authorized_for = []
-    res = client.post('/v0/falsepositive',
-                      json={'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'})
-    assert '{"msg":"Thanks! We\\u2019ve marked this as a false positive","status":"ok"}' \
-           in res.data.decode('utf-8')
+    res = client.post('/v0/falsepositive', json=post_json_data)
+    expected_response = \
+        '{"msg":"Thanks! We\\u2019ve marked this as a false positive",' \
+        '"status":"ok"}'
+    assert expected_response in res.data.decode('utf-8')
 
 
 def test_falsepositive_error(bad_client):
+    """Test the falsepositive endpoint fails when the args are missing"""
     res = bad_client.get('/v0/falsepositive')
-    assert res.status == '405 METHOD NOT ALLOWED'
+    assert res.status == '500 INTERNAL SERVER ERROR'
 
 
 def test_v0_root(client):
+    """Test the v0 endpoint works"""
     g.test_authorized_for = []
     res = client.get('/v0/')
     assert res.data == b'Comet-API-v0'
 
+
 def test_dbhealth_check(client):
+    """Test the dbcheck endpoint works"""
     res = client.get('/v0/dbcheck')
     assert res.data == b'Comet-API-v0'
 
 
 def test_dbhealth_check_error(client):
+    """Test the dbcheck fails when the get_db function raises exception"""
     with mock.patch('comet_core.api_v0.get_db') as mock_get_db:
         mock_get_db.side_effect = Exception('XOXO')
         res = client.get('/v0/dbcheck')
@@ -153,53 +181,68 @@ def test_dbhealth_check_error(client):
 
 
 def test_acknowledge(client):
-    """Test the acknowledge endpoint works"""
+    """Test the acknowledge GET endpoint works"""
     g.test_authorized_for = []
-    res = client.get('/v0/acknowledge/splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    res = client.get('/v0/acknowledge' + get_request_args)
     assert 'Thanks for acknowledging!' in res.data.decode('utf-8')
 
 
+def test_acknowledge_hmac_validation_failed(client):
+    """Test the acknowledge endpoint fails when the fingerprint
+       doesn't match the token passed"""
+    res = client.get('/v0/acknowledge?fp=splunk_82998ef6bb3db9dff3dsfdsfsdc'
+                     '&t=97244b15a21f45e002b2e913866ff7545510f9b08dea5241f')
+    assert res.status == '500 INTERNAL SERVER ERROR'
+
+
 def test_acknowledge_post(client):
+    """Test the acknowledge POST endpoint works"""
     g.test_authorized_for = []
-    res = client.post('/v0/acknowledge',
-                      json={'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'})
+    res = client.post('/v0/acknowledge', json=post_json_data)
     assert '{"msg":"Thanks for acknowledging!","status":"ok"}' \
            in res.data.decode('utf-8')
 
 
 def test_acknowledge_error_no_fingerprint_passed(client):
-    """Test the acknowledge endpoint fails when no fingerprint passes"""
+    """Test the acknowledge endpoint fails when fingerprint is missing"""
     g.test_authorized_for = []
     res = client.get('/v0/acknowledge')
-    assert res.status == '405 METHOD NOT ALLOWED'
+    assert res.status == '500 INTERNAL SERVER ERROR'
 
 
 def test_escalate(client):
     """Test the escalate endpoint works"""
     g.test_authorized_for = []
-    res = client.get('/v0/escalate/splunk_4025ad523c2a94e5a13b1c8aef8c5730')
+    res = client.get('/v0/escalate' + get_request_args)
     assert 'Thanks! This alert has been escalated' in res.data.decode('utf-8')
 
 
 def test_escalate_post(client):
+    """Test the POST escalate endpoint works"""
     g.test_authorized_for = []
-    res = client.post('/v0/escalate',
-                      json={'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'})
-    assert '{"msg":"Thanks! This alert has been escalated.","status":"ok"}' \
-           in res.data.decode('utf-8')
+    res = client.post('/v0/escalate', json=post_json_data)
+    expected_response = \
+        '{"msg":"Thanks! This alert has been escalated.","status":"ok"}'
+    assert expected_response in res.data.decode('utf-8')
+
+
+def test_escalate_post_error(client):
+    """Test escalation fails when the fingerprint passed is too short"""
+    g.test_authorized_for = []
+    res = client.post('/v0/escalate', json={'fingerprint': 'splunk'})
+    assert '500 INTERNAL SERVER ERROR' in res.status
 
 
 def test_escalate_error(client):
-    """Test escalation fails when when no fingerprint passes"""
+    """Test escalation fails when when no fingerprint and token are missing"""
     g.test_authorized_for = []
     res = client.get('/v0/escalate')
-    assert '405 METHOD NOT ALLOWED' in res.status
+    assert '500 INTERNAL SERVER ERROR' in res.status
 
 
 def test_escalate_error_post(client):
-    """Test escalation fails when when no fingerprint passes"""
+    """Test escalation fails when the fingerprint passed contains tags"""
     g.test_authorized_for = []
     res = client.post('/v0/escalate',
-                     json={
-                         'fingerprint': 'splunk_4025ad30<script>'})
+                      json={'fingerprint': 'splunk_4025ad30<script>'})
     assert '500 INTERNAL SERVER ERROR' in res.status

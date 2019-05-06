@@ -15,14 +15,15 @@
 """Helper function to compute the fingerprint of alerts."""
 
 import collections
+import hmac
 import json
 from copy import deepcopy
-from hashlib import shake_256
+from hashlib import sha256, shake_256
 
 HASH_BYTES = 16  # 128 bits of entropy, will result in 32 character hexdigest string
 
 
-def comet_event_fingerprint(data_dict, blacklist=[], prefix=''):  # pylint: disable=dangerous-default-value
+def comet_event_fingerprint(data_dict, blacklist=None, prefix=''):
     """Computes the fingerprint of an event by hashing it's data dictionary.
 
     Args:
@@ -33,7 +34,7 @@ def comet_event_fingerprint(data_dict, blacklist=[], prefix=''):  # pylint: disa
         str: the fingerprint
     """
     data_dict_copy = deepcopy(data_dict)
-    filtered_dict = filter_dict(data_dict_copy, blacklist)
+    filtered_dict = filter_dict(data_dict_copy, blacklist if blacklist is not None else [])
     data_hash_str = dict_to_hash(filtered_dict)
     return f'{prefix}{data_hash_str}'
 
@@ -98,3 +99,19 @@ def str_to_hash(input_str):
     input_bytes = input_str.encode('utf-8')
     hash_str = shake_256(input_bytes).hexdigest(HASH_BYTES)
     return hash_str
+
+
+def fingerprint_hmac(fingerprint, hmac_secret):
+    """Generate an hmac for the given fingerprint.
+
+    Can be used for authenticating
+
+    Args:
+        fingerprint (str): fingerprint to generate hmac for
+        hmac_secret (str): secret key for hmac generation
+
+    Returns:
+        str: hmac as hexdigest str
+
+    """
+    return hmac.new(bytes(hmac_secret, 'utf-8'), msg=bytes(fingerprint, 'utf-8'), digestmod=sha256).hexdigest()
