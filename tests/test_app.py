@@ -201,7 +201,9 @@ def test_register_router(app):
         pass
 
     app.register_router(func=test_router)
-    assert app.routers.func_count() == 2
+    app.register_router(source_types='test', func=test_router)
+
+    assert app.routers.func_count() == 3
 
     @app.register_router('test1')
     def test_router2(*args):
