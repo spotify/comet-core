@@ -124,7 +124,7 @@ class SourceTypeFunction:
             int: the total amount of registered functions
         """
         res = 0
-        for _, val in self.specific_collection:
+        for val in self.specific_collection.values():
             res += len(val)
         return res + len(self.global_collection)
 

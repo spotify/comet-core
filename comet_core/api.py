@@ -35,14 +35,13 @@ class CometApi():
         hmac_secret (str): the server secret to use in GET requests auth
     """
 
-    # pylint: disable=dangerous-default-value
     def __init__(self,
-                 cors_origins=[],
+                 cors_origins=None,
                  database_uri='sqlite://',
                  host='0.0.0.0',
                  port=5000,
                  hmac_secret=''):
-        self.cors_origins = cors_origins
+        self.cors_origins = cors_origins if cors_origins is not None else []
         self.database_uri = database_uri
         self.host = host
         self.port = port
