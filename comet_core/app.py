@@ -144,6 +144,7 @@ class Comet:
         self.inputs = list()
         self.instantiated_inputs = list()
         self.hydrators = dict()
+        self.filters = dict()
         self.parsers = dict()
         self.routers = SourceTypeFunction()
         self.escalators = SourceTypeFunction()
@@ -189,8 +190,14 @@ class Comet:
         if hydrate:
             hydrate(event)
 
+        # Filter event
+        filter_event = self.filters.get(source_type)
+        if filter_event:
+            event = filter_event(event)
+
         # Add to datastore
-        self.data_store.add_record(event.get_record())
+        if event:
+            self.data_store.add_record(event.get_record())
         return True
 
     def set_config(self, source_type, config):
@@ -277,6 +284,28 @@ class Comet:
             return decorator
         else:
             self.hydrators[source_type] = func
+
+    def register_filter(self, source_type, func=None):
+        """Register a filter function to filter events before saving them to the db.
+
+        This method can be used either as a decorator or with a filter function passed in.
+
+        Args:
+            source_type (str): the source type to register the filter for
+            func (Optional[function]): a function that filter a message of type source_type, or None if used as a
+                decorator
+        Return:
+            function or None: if no func is given returns a decorator function, otherwise None
+        """
+        if not func:
+            # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+            def decorator(func):
+                self.filters[source_type] = func
+                return func
+
+            return decorator
+        else:
+            self.filters[source_type] = func
 
     def register_router(self, source_types=None, func=None):
         """Register a hydrator.
