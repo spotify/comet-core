@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from comet_core.data_store import DataStore
 from comet_core.model import EventRecord
 from comet_core.fingerprint import comet_event_fingerprint
+from comet_core.alert_configuration_factory import AlertConfigurationFactory, get_event_conf
 
 LOG = logging.getLogger(__name__)
 
@@ -39,6 +40,12 @@ class EventContainer:
         self.fingerprint = comet_event_fingerprint(data_dict=message,
                                                    prefix=source_type + '_')
         self.event_metadata = dict()
+        self.conf = self.get_event_conf()
+
+    def get_event_conf(self):
+        conf_name = self.message.get('conf_name')
+        alert_conf = AlertConfigurationFactory(conf_name, self.source_type).get_conf()
+        return alert_conf
 
     def get_record(self):
         """Make the event container into a database record.
@@ -74,6 +81,17 @@ class EventContainer:
             metadata (dict): arbitrary metadata for the event
         """
         self.event_metadata = metadata
+
+    def update_metadata(self, metadata):
+        """Update optional metadata for the event.
+
+        Args:
+            metadata (dict): arbitrary metadata for the event
+        """
+        if self.event_metadata:
+            self.event_metadata.update(metadata)
+        else:
+            self.event_metadata = metadata
 
 
 class SourceTypeFunction:
@@ -124,7 +142,7 @@ class SourceTypeFunction:
             int: the total amount of registered functions
         """
         res = 0
-        for val in self.specific_collection.values():
+        for _, val in self.specific_collection:
             res += len(val)
         return res + len(self.global_collection)
 
@@ -460,34 +478,45 @@ class Comet:
            addressed the alert.
         """
         for source_type in self.real_time_sources:
-            source_type_config = self.batch_config
-            if source_type in self.specific_configs:
-                source_type_config.update(self.specific_configs[source_type])
-            else:
-                LOG.error('real time source type must have specific configs')
-
             non_addressed_events = \
                 self.data_store.get_events_did_not_addressed(source_type)
 
             events_needs_escalation = []
-            default_escalate_cadence = timedelta(hours=36)
 
             for event in non_addressed_events:
-                search_name = event.data.get('search_name')
-                if search_name is not None:
-                    alert_properties = \
-                        source_type_config['alerts'].get(search_name, {})
-                    escalate_cadence = \
-                        alert_properties.get('escalate_cadence',
-                                             default_escalate_cadence)
-                    event_sent_at = event.sent_at
+                event_conf = get_event_conf(event)
 
-                    # when is earliest time to escalate the specific event
-                    if event_sent_at <= datetime.utcnow() - escalate_cadence:
-                        events_needs_escalation.append(event)
+                escalate_cadence = self._extract_escalate_cadence(
+                    event_conf.escalate_cadence)
+
+                event_sent_at = event.sent_at
+
+                # when is earliest time to escalate the specific event
+                if event_sent_at <= datetime.utcnow() - escalate_cadence:
+                    events_needs_escalation.append(event)
 
             self._handle_events_need_escalation(source_type,
                                                 events_needs_escalation)
+
+    def _extract_escalate_cadence(self, escalate_cadence_str):
+        """parse and extract timedelta object represent escalate_cadence
+        for the event, we only deal with hours and minutes now,
+        add parsing functionality if you have more times to add.
+        :param escalate_cadence_str: the string to parse to get the
+        escalation cadence for the event:
+        'H' represent hours,
+        'm' represent minutes.
+        :return: timedelta object of time to wait until escalating the event
+        if haven't addressed by the user.
+        """
+        escalate_cadence = timedelta(hours=36)
+        if 'H' in escalate_cadence_str:
+            hours_num = int(escalate_cadence_str.split('H')[0])
+            escalate_cadence = timedelta(hours=hours_num)
+        elif 'm' in escalate_cadence_str:
+            minutes_num = int(escalate_cadence_str.split('m')[0])
+            escalate_cadence = timedelta(minutes=minutes_num)
+        return escalate_cadence
 
     def _route_events(self, owner, events, source_type):
         """route events need routing by getting the route function
