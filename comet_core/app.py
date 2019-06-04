@@ -43,9 +43,17 @@ class EventContainer:
         self.conf = self.get_event_conf()
 
     def get_event_conf(self):
+        """
+        Return event conf object to the event only if
+        it has a conf_name in the message.
+        configuration files work for real time events.
+        :return (AlertConfiguration): configuration object for the event
+        """
         conf_name = self.message.get('conf_name')
-        alert_conf = AlertConfigurationFactory(conf_name, self.source_type).get_conf()
-        return alert_conf
+        if conf_name:
+            conf = AlertConfigurationFactory(conf_name, self.source_type).get_conf()
+            return conf
+        return None
 
     def get_record(self):
         """Make the event container into a database record.
@@ -478,19 +486,18 @@ class Comet:
            addressed the alert.
         """
         for source_type in self.real_time_sources:
-            non_addressed_events = \
-                self.data_store.get_events_did_not_addressed(source_type)
-
+            non_addressed_events = self.data_store.get_events_did_not_addressed(source_type)
             events_needs_escalation = []
-
             for event in non_addressed_events:
                 event_conf = get_event_conf(event)
-
-                escalate_cadence = self._extract_escalate_cadence(
-                    event_conf.escalate_cadence)
-
+                if event_conf:
+                    escalate_cadence = self._extract_escalate_cadence(
+                        event_conf.escalate_cadence)
+                # if event doesn't have conf, it will get the default
+                # time to wait before escalation.
+                else:
+                    escalate_cadence = timedelta(hours=36)
                 event_sent_at = event.sent_at
-
                 # when is earliest time to escalate the specific event
                 if event_sent_at <= datetime.utcnow() - escalate_cadence:
                     events_needs_escalation.append(event)
@@ -498,16 +505,17 @@ class Comet:
             self._handle_events_need_escalation(source_type,
                                                 events_needs_escalation)
 
-    def _extract_escalate_cadence(self, escalate_cadence_str):
-        """parse and extract timedelta object represent escalate_cadence
-        for the event, we only deal with hours and minutes now,
+    @staticmethod
+    def _extract_escalate_cadence(escalate_cadence_str):
+        """Parse and extract timedelta object represent escalate_cadence
+        for the event. we only deal with hours and minutes now,
         add parsing functionality if you have more times to add.
-        :param escalate_cadence_str: the string to parse to get the
+        :param escalate_cadence_str (str): the string to parse to get the
         escalation cadence for the event:
         'H' represent hours,
         'm' represent minutes.
-        :return: timedelta object of time to wait until escalating the event
-        if haven't addressed by the user.
+        :return (timedelta): timedelta object of time to wait until
+        escalate the event if haven't addressed by the user.
         """
         escalate_cadence = timedelta(hours=36)
         if 'H' in escalate_cadence_str:
