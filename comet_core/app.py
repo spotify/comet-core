@@ -47,7 +47,10 @@ class EventContainer:
         Return event conf object to the event only if
         it has a conf_name in the message.
         configuration files work for real time events.
-        :return (AlertConfiguration): configuration object for the event
+
+        Returns:
+            AlertConfiguration: configuration object for the event,
+            or None if there is no conf_name in the message
         """
         conf_name = self.message.get('conf_name')
         if conf_name:
@@ -150,7 +153,7 @@ class SourceTypeFunction:
             int: the total amount of registered functions
         """
         res = 0
-        for _, val in self.specific_collection:
+        for val in self.specific_collection.values():
             res += len(val)
         return res + len(self.global_collection)
 
@@ -510,12 +513,15 @@ class Comet:
         """Parse and extract timedelta object represent escalate_cadence
         for the event. we only deal with hours and minutes now,
         add parsing functionality if you have more times to add.
-        :param escalate_cadence_str (str): the string to parse to get the
-        escalation cadence for the event:
-        'H' represent hours,
-        'm' represent minutes.
-        :return (timedelta): timedelta object of time to wait until
-        escalate the event if haven't addressed by the user.
+
+        Args:
+            escalate_cadence_str (str): the string to parse to get the
+            escalation cadence for the event:
+            'H' represent hours,
+            'm' represent minutes.
+        Returns:
+            timedelta: timedelta object of time to wait until
+            escalate the event if haven't addressed by the user.
         """
         escalate_cadence = timedelta(hours=36)
         if 'H' in escalate_cadence_str:

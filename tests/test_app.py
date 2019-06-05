@@ -13,10 +13,11 @@
 # limitations under the License.
 
 """Test comet_handler"""
-
+from collections import namedtuple
 from datetime import datetime, timedelta
 from unittest import mock
 import json
+from unittest.mock import patch
 
 from freezegun import freeze_time
 from marshmallow import fields, Schema
@@ -387,27 +388,14 @@ def test_process_unprocessed_real_time_events():
     assert escalator.call_count == 1
 
 
-def test_handle_non_addressed_events():
+@patch('comet_core.app.get_event_conf')
+def test_handle_non_addressed_events(mock_get_event_conf):
     app = Comet()
     app.register_parser('real_time_source', json)
     app.register_parser('real_time_source2', json)
     app.register_real_time_source('real_time_source')
     app.register_real_time_source('real_time_source2')
 
-    app.set_config('real_time_source', {'alerts': {
-        'alert search name':
-            {
-                'escalate_cadence': timedelta(minutes=45),
-                'template': 'alerts_template'
-            }
-    }})
-    app.set_config('real_time_source2', {'alerts': {
-        'alert search name':
-            {
-                'escalate_cadence': timedelta(minutes=45),
-                'template': 'alerts_template'
-            }
-    }})
     escalator = mock.Mock()
     escalator2 = mock.Mock()
     app.register_escalator('real_time_source', func=escalator)
@@ -439,6 +427,10 @@ def test_handle_non_addressed_events():
                     data={'search_name': 'alert search name',
                           'name': 'doesnt need escalation'},
                     fingerprint='f3'))
+
+    d = {"escalate_cadence": "45m"}
+    mock_get_event_conf.return_value = \
+        namedtuple("AlertConfiguration", d.keys())(*d.values())
 
     app.handle_non_addressed_events()
     assert escalator.call_count == 1
