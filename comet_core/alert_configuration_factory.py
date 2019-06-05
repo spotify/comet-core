@@ -2,6 +2,8 @@ import json
 from collections import namedtuple
 import pkg_resources
 
+"""Alert Configuration Factory class"""
+
 
 class AlertConfigurationFactory(object):
     """
