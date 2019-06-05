@@ -188,7 +188,6 @@ class Comet:
             'escalation_time': timedelta(seconds=10),
             'escalation_reminder_cadence': timedelta(days=7)
         }
-        self.specific_configs = {}
 
     def message_callback(self, source_type, message):
         """This is the callback that inputs should call when they receive new messages
@@ -228,15 +227,6 @@ class Comet:
         if event:
             self.data_store.add_record(event.get_record())
         return True
-
-    def set_config(self, source_type, config):
-        """Call to override default batching and escalation logic.
-
-        Args:
-            source_type (str): the source type to override the configuration for
-            config (dict): the config values to override
-        """
-        self.specific_configs[source_type] = config
 
     def register_input(self, clazz=None, **kwargs):
         """Register an input, with optional configuration.
@@ -403,8 +393,6 @@ class Comet:
         # pylint: disable=consider-iterating-dictionary
         for source_type in self.parsers.keys():
             source_type_config = self.batch_config
-            if source_type in self.specific_configs:
-                source_type_config.update(self.specific_configs[source_type])
 
             batch_events = self.data_store.get_unprocessed_events_batch(
                 source_type_config['wait_for_more'],

@@ -224,15 +224,6 @@ def test_register_filter(app):
     assert len(app.filters) == 2, app.filters
 
 
-def test_set_config(app):
-    assert not app.specific_configs
-
-    app.set_config('test1', {})
-    app.set_config('test2', {})
-
-    assert len(app.specific_configs) == 2
-
-
 def test_register_router(app):
     assert not app.routers.func_count()
 
