@@ -16,7 +16,6 @@
 
 import json
 from collections import namedtuple
-import pkg_resources
 
 
 class AlertConfigurationFactory(object):
@@ -24,13 +23,15 @@ class AlertConfigurationFactory(object):
     Factory class to create AlertConfiguration object
 
     Args:
-        conf_file_name (str): the configuration file name
+        alerts_conf_path (str): where all the alerts conf files live.
         source_type (str): the source type folder name
         to construct the path to the conf file.
+        subtype (str): subtype of the alert to construct the path to the conf file.
     """
-    def __init__(self, conf_file_name, source_type):
-        self.conf_file_name = conf_file_name
+    def __init__(self, alerts_conf_path, source_type, subtype):
+        self.alerts_conf_path = alerts_conf_path
         self.source_type = source_type
+        self.subtype = subtype
 
     def get_conf(self):
         """
@@ -40,26 +41,30 @@ class AlertConfigurationFactory(object):
         Returns:
             AlertConfiguration: configuration object
         """
-        conf_path = f'alerts_conf_files/{self.source_type}/' + self.conf_file_name + '.json'
-        conf_data = pkg_resources.resource_stream('comet_spotify', conf_path).read()
+        conf_path = f'{self.alerts_conf_path}/{self.source_type}/' + self.subtype + '.json'
 
-        data = json.loads(conf_data)
+        with open(conf_path, 'r') as f:
+            conf_data = f.read()
+            data = json.loads(conf_data)
+            data['source_type'] = self.source_type
+
         return namedtuple("AlertConfiguration", data.keys())(*data.values())
 
 
-def get_event_conf(event):
+def get_event_conf(alerts_conf_path, event):
     """
     Return event conf object to the event only if
     it has a conf_name in the message.
     configuration files work for real time events.
 
     Args:
+        alerts_conf_path (str): the path where all the alerts conf files live.
         event (EventRecord): the event to extract the conf file name from.
     Returns:
         AlertConfiguration: configuration object for the event
     """
-    conf_name = event.data.get('conf_name')
-    if conf_name:
-        conf = AlertConfigurationFactory(conf_name, event.source_type).get_conf()
+    subtype = event.data.get('subtype')
+    if subtype:
+        conf = AlertConfigurationFactory(alerts_conf_path, event.source_type, subtype).get_conf()
         return conf
     return None

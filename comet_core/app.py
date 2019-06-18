@@ -29,11 +29,13 @@ class EventContainer:
     """This is the container of an event that is passed to the hydrator functions.
 
     Args:
+        alerts_conf_path (str): the path where all the alerts conf files live.
         source_type (str): the source type of the message
         message (dict): the message data
     """
 
-    def __init__(self, source_type, message):
+    def __init__(self, alerts_conf_path, source_type, message):
+        self.alerts_conf_path = alerts_conf_path
         self.source_type = source_type
         self.message = message
         self.owner = None
@@ -52,9 +54,9 @@ class EventContainer:
             AlertConfiguration: configuration object for the event,
             or None if there is no conf_name in the message
         """
-        conf_name = self.message.get('conf_name')
-        if conf_name:
-            conf = AlertConfigurationFactory(conf_name, self.source_type).get_conf()
+        subtype = self.message.get('subtype')
+        if subtype:
+            conf = AlertConfigurationFactory(self.alerts_conf_path, self.source_type, subtype).get_conf()
             return conf
         return None
 
@@ -163,12 +165,12 @@ class Comet:
     """The main Comet class
 
     Args:
-        database_uri (str): the database to connect to as an URI
+        config (dict): the app configuration dict.
     """
 
-    def __init__(self, database_uri='sqlite://'):
+    def __init__(self, config):
+        self.app_config = config
         self.running = False
-        self.data_store = DataStore(database_uri)
 
         self.inputs = list()
         self.instantiated_inputs = list()
@@ -179,7 +181,8 @@ class Comet:
         self.escalators = SourceTypeFunction()
         self.real_time_sources = list()
 
-        self.database_uri = database_uri
+        self.database_uri = self.app_config.get('database', 'sqlite://')
+        self.data_store = DataStore(self.database_uri)
         self.batch_config = {
             'wait_for_more': timedelta(seconds=3),
             'max_wait': timedelta(seconds=4),
@@ -204,14 +207,15 @@ class Comet:
             LOG.warning(f'no parser found', extra={'source_type': source_type})
             return False
 
-        message_schema = parser()
-        message_dict, message_error = message_schema.loads(message)
+        message_schema = parser(self.app_config)
+        message_dict, message_error = message_schema.loads(message, source_type)
         if message_error:
-            LOG.warning(f'invalid message', extra={'source_type': source_type})
+            LOG.warning(f'invalid message', extra={'source_type': source_type,
+                                                   "message_error": message_error})
             return False
 
         # Prepare an event container
-        event = EventContainer(source_type, message_dict)
+        event = EventContainer(self.app_config['alerts_conf_path'], source_type, message_dict)
 
         # Hydrate
         hydrate = self.hydrators.get(source_type)
@@ -480,7 +484,7 @@ class Comet:
             non_addressed_events = self.data_store.get_events_did_not_addressed(source_type)
             events_needs_escalation = []
             for event in non_addressed_events:
-                event_conf = get_event_conf(event)
+                event_conf = get_event_conf(self.app_config['alerts_conf_path'], event)
                 if event_conf:
                     escalate_cadence = self._extract_escalate_cadence(
                         event_conf.escalate_cadence)
