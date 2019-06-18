@@ -53,11 +53,12 @@ EVENT_RECORD_WITH_OVERRIDE = EventRecord(received_at=datetime(2018, 2, 19, 0, 0,
                                          source_type='test',
                                          data={'test': 'test'})
 
+CONFIG = {'alerts_conf_path': 'alerts_conf_path'}
 
 @freeze_time('2018-05-09 09:00:00')
 # pylint: disable=missing-docstring
 def test_process_unprocessed_events():
-    app = Comet()
+    app = Comet(CONFIG)
     app.register_parser('datastoretest', json)
     app.register_parser('datastoretest2', json)
     app.register_parser('datastoretest3', json)
@@ -113,7 +114,7 @@ def test_process_unprocessed_events():
 
 
 def test_event_container():
-    container = EventContainer('test', {})
+    container = EventContainer('alerts_conf_path', 'test', {})
     container.set_owner('testowner')
     container.set_fingerprint('testfp')
     container.set_metadata({'a': 'b'})
@@ -127,7 +128,10 @@ def test_event_container():
 def test_message_callback(app):
     @app.register_parser('test')
     class TestParser:
-        def loads(self, msg):
+        def __init__(self, conf):
+            pass
+
+        def loads(self, msg, source_type):
             ev = json.loads(msg)
             if 'a' in ev:
                 return ev, None
@@ -136,7 +140,7 @@ def test_message_callback(app):
     hydrator_mock = mock.Mock()
     app.register_hydrator('test', hydrator_mock)
 
-    filter_return_value = EventContainer('test', {"a": "b"})
+    filter_return_value = EventContainer('alerts_conf_path', 'test', {"a": "b"})
     filter_mock = mock.Mock(return_value=filter_return_value)
     app.register_filter('test', filter_mock)
 
@@ -152,7 +156,10 @@ def test_message_callback(app):
 def test_message_callback_filter(app):
     @app.register_parser('test')
     class TestParser:
-        def loads(self, msg):
+        def __init__(self, conf):
+            pass
+
+        def loads(self, msg, source_type):
             ev = json.loads(msg)
             if 'a' in ev:
                 return ev, None
@@ -271,7 +278,7 @@ def test_validate_config(app):
     app.validate_config()
     assert not app.parsers
 
-    app = Comet()
+    app = Comet(CONFIG)
 
     app.register_parser('test1', TestParser)
 
@@ -314,7 +321,7 @@ def test_run(app):
 @freeze_time('2018-05-09 09:00:00')
 # pylint: disable=missing-docstring
 def test_process_unprocessed_real_time_events():
-    app = Comet()
+    app = Comet(CONFIG)
     app.register_parser('real_time_source', json)
     app.register_parser('datastoretest', json)
 
@@ -381,7 +388,7 @@ def test_process_unprocessed_real_time_events():
 
 @patch('comet_core.app.get_event_conf')
 def test_handle_non_addressed_events(mock_get_event_conf):
-    app = Comet()
+    app = Comet(CONFIG)
     app.register_parser('real_time_source', json)
     app.register_parser('real_time_source2', json)
     app.register_real_time_source('real_time_source')

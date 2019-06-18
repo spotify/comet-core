@@ -21,7 +21,7 @@ import pytest
 
 @pytest.fixture
 def app():
-    yield Comet()
+    yield Comet({'alerts_conf_path': 'alerts_conf_path'})
 
 
 @pytest.fixture
