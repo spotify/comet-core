@@ -114,7 +114,7 @@ def test_process_unprocessed_events():
 
 
 def test_event_container():
-    container = EventContainer('alerts_conf_path', 'test', {})
+    container = EventContainer('test', {})
     container.set_owner('testowner')
     container.set_fingerprint('testfp')
     container.set_metadata({'a': 'b'})
@@ -127,20 +127,16 @@ def test_event_container():
 
 def test_message_callback(app):
     @app.register_parser('test')
-    class TestParser:
-        def __init__(self, conf):
-            pass
-
-        def loads(self, msg, source_type):
-            ev = json.loads(msg)
-            if 'a' in ev:
-                return ev, None
-            return None, 'fail'
+    def parse_message(message):
+        ev = json.loads(message)
+        if 'a' in ev:
+            return ev, None
+        return None, 'fail'
 
     hydrator_mock = mock.Mock()
     app.register_hydrator('test', hydrator_mock)
 
-    filter_return_value = EventContainer('alerts_conf_path', 'test', {"a": "b"})
+    filter_return_value = EventContainer('test', {"a": "b"})
     filter_mock = mock.Mock(return_value=filter_return_value)
     app.register_filter('test', filter_mock)
 
@@ -155,15 +151,11 @@ def test_message_callback(app):
 
 def test_message_callback_filter(app):
     @app.register_parser('test')
-    class TestParser:
-        def __init__(self, conf):
-            pass
-
-        def loads(self, msg, source_type):
-            ev = json.loads(msg)
-            if 'a' in ev:
-                return ev, None
-            return None, 'fail'
+    def parse_message(message):
+        ev = json.loads(message)
+        if 'a' in ev:
+            return ev, None
+        return None, 'fail'
 
     filter_mock = mock.Mock(return_value=None)
     app.register_filter('test', filter_mock)
@@ -189,14 +181,30 @@ def test_register_parser(app):
     assert not app.parsers
 
     @app.register_parser('test1')
-    class TestParser:
+    def parse_message(message):
         pass
 
     # Override existing
-    app.register_parser('test1', TestParser)
+    app.register_parser('test1', parse_message)
     assert len(app.parsers) == 1
-    app.register_parser('test2', TestParser)
+    app.register_parser('test2', parse_message)
     assert len(app.parsers) == 2
+
+
+def test_register_event_config(app):
+    assert not app.event_conf_loaders
+
+    @app.register_event_config('test1')
+    def test_register_conf(*args):
+        pass
+
+    # Override existing
+    app.register_event_config('test1', test_register_conf)
+    assert len(app.event_conf_loaders) == 1, app.event_conf_loaders
+
+    # Add another
+    app.register_event_config('test2', test_register_conf)
+    assert len(app.event_conf_loaders) == 2, app.event_conf_loaders
 
 
 def test_register_hydrator(app):
@@ -271,7 +279,7 @@ def test_register_escalator(app):
 
 def test_validate_config(app):
     @app.register_parser('test1')
-    class TestParser:
+    def parse_message(message):
         pass
 
     assert app.parsers
@@ -280,7 +288,7 @@ def test_validate_config(app):
 
     app = Comet(CONFIG)
 
-    app.register_parser('test1', TestParser)
+    app.register_parser('test1', parse_message)
 
     @app.register_router('test1')
     def test_router(*args):
@@ -386,11 +394,31 @@ def test_process_unprocessed_real_time_events():
     assert escalator.call_count == 1
 
 
-@patch('comet_core.app.get_event_conf')
-def test_handle_non_addressed_events(mock_get_event_conf):
+def test_handle_non_addressed_events():
     app = Comet(CONFIG)
-    app.register_parser('real_time_source', json)
-    app.register_parser('real_time_source2', json)
+
+    @app.register_parser('real_time_source')
+    def parse_message(message):
+        data = json.loads(message)
+        return data, {}
+
+    @app.register_parser('real_time_source2')
+    def parse_message(message):
+        data = json.loads(message)
+        return data, {}
+
+    @app.register_event_config('real_time_source')
+    def register_conf(event):
+        d = {"escalate_cadence": "45m"}
+        conf = namedtuple("AlertConfiguration", d.keys())(*d.values())
+        event.conf = conf
+
+    @app.register_event_config('real_time_source2')
+    def register_conf(event):
+        d = {"escalate_cadence": "45m"}
+        conf = namedtuple("AlertConfiguration", d.keys())(*d.values())
+        event.conf = conf
+
     app.register_real_time_source('real_time_source')
     app.register_real_time_source('real_time_source2')
 
@@ -425,10 +453,6 @@ def test_handle_non_addressed_events(mock_get_event_conf):
                     data={'search_name': 'alert search name',
                           'name': 'doesnt need escalation'},
                     fingerprint='f3'))
-
-    d = {"escalate_cadence": "45m"}
-    mock_get_event_conf.return_value = \
-        namedtuple("AlertConfiguration", d.keys())(*d.values())
 
     app.handle_non_addressed_events()
     assert escalator.call_count == 1

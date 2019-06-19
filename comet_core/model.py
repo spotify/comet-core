@@ -113,6 +113,7 @@ class EventRecord(BaseRecord):
     def __init__(self, *args, **kwargs):
         self.new = False
         self.owner_email_overridden = False
+        self.conf = None
         super().__init__(*args, **kwargs)
 
     def update_metadata(self, metadata):

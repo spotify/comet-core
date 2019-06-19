@@ -25,7 +25,7 @@ def get_all_test_messages(parsed=False):
     Yields:
         EventContainer: some test event
     """
-    event = EventContainer('alerts_conf_path', 'test', {})
+    event = EventContainer('test', {})
     event.set_owner('test@acme.org')
     event.set_fingerprint('test')
     return [event]

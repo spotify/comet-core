@@ -20,7 +20,6 @@ from datetime import datetime, timedelta
 from comet_core.data_store import DataStore
 from comet_core.model import EventRecord
 from comet_core.fingerprint import comet_event_fingerprint
-from comet_core.alert_configuration_factory import AlertConfigurationFactory, get_event_conf
 
 LOG = logging.getLogger(__name__)
 
@@ -29,36 +28,18 @@ class EventContainer:
     """This is the container of an event that is passed to the hydrator functions.
 
     Args:
-        alerts_conf_path (str): the path where all the alerts conf files live.
         source_type (str): the source type of the message
         message (dict): the message data
     """
 
-    def __init__(self, alerts_conf_path, source_type, message):
-        self.alerts_conf_path = alerts_conf_path
+    def __init__(self, source_type, message):
         self.source_type = source_type
         self.message = message
         self.owner = None
         self.fingerprint = comet_event_fingerprint(data_dict=message,
                                                    prefix=source_type + '_')
         self.event_metadata = dict()
-        self.conf = self.get_event_conf()
-
-    def get_event_conf(self):
-        """
-        Return event conf object to the event only if
-        it has a conf_name in the message.
-        configuration files work for real time events.
-
-        Returns:
-            AlertConfiguration: configuration object for the event,
-            or None if there is no conf_name in the message
-        """
-        subtype = self.message.get('subtype')
-        if subtype:
-            conf = AlertConfigurationFactory(self.alerts_conf_path, self.source_type, subtype).get_conf()
-            return conf
-        return None
+        self.conf = None
 
     def get_record(self):
         """Make the event container into a database record.
@@ -177,6 +158,7 @@ class Comet:
         self.hydrators = dict()
         self.filters = dict()
         self.parsers = dict()
+        self.event_conf_loaders = dict()
         self.routers = SourceTypeFunction()
         self.escalators = SourceTypeFunction()
         self.real_time_sources = list()
@@ -202,20 +184,24 @@ class Comet:
             boolean: True if parsing was successful, False otherwise
         """
         LOG.info('received a message', extra={'source_type': source_type})
-        parser = self.parsers.get(source_type)
-        if not parser:
+        parse = self.parsers.get(source_type)
+        if not parse:
             LOG.warning(f'no parser found', extra={'source_type': source_type})
             return False
 
-        message_schema = parser(self.app_config)
-        message_dict, message_error = message_schema.loads(message, source_type)
+        message_dict, message_error = parse(message)
         if message_error:
             LOG.warning(f'invalid message', extra={'source_type': source_type,
                                                    "message_error": message_error})
             return False
 
         # Prepare an event container
-        event = EventContainer(self.app_config['alerts_conf_path'], source_type, message_dict)
+        event = EventContainer(source_type, message_dict)
+
+        # load configuration for event
+        load_config = self.event_conf_loaders.get(source_type)
+        if load_config:
+            load_config(event)
 
         # Hydrate
         hydrate = self.hydrators.get(source_type)
@@ -257,27 +243,49 @@ class Comet:
         else:
             self.inputs.append((clazz, kwargs))
 
-    def register_parser(self, source_type, schema=None):
-        """Register a parser.
+    def register_parser(self, source_type, func=None):
+        """Register a parser function .
 
-        This method can be used either as a decorator or with a schema passed in.
+        This method can be used either as a decorator or with a parser function passed in.
 
         Args:
             source_type (str): the source type to register the parser for
-            schema (Optional[marshmallow.Schema]): a schema able to parse messages for the given source_type or None if
-                used as decorator
+            func (Optional[function]): a function that parse a message of type source_type, or None if used as a
+                decorator
         Return:
             function or None: if no scehma is given returns a decorator function, otherwise None
         """
-        if not schema:
+        if not func:
             # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
-            def decorator(schema):
-                self.parsers[source_type] = schema
-                return schema
+            def decorator(func):
+                self.parsers[source_type] = func
+                return func
 
             return decorator
         else:
-            self.parsers[source_type] = schema
+            self.parsers[source_type] = func
+
+    def register_event_config(self, source_type, func=None):
+        """Register a event configuration loader function.
+
+        This method can be used either as a decorator or with a parser function passed in.
+
+        Args:
+            source_type (str): the source type to register the parser for
+            func (Optional[function]): a function that parse a message of type source_type, or None if used as a
+                decorator
+        Return:
+            function or None: if no scehma is given returns a decorator function, otherwise None
+        """
+        if not func:
+            # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+            def decorator(func):
+                self.event_conf_loaders[source_type] = func
+                return func
+
+            return decorator
+        else:
+            self.event_conf_loaders[source_type] = func
 
     def register_real_time_source(self, source_type):
         """Register real time source type
@@ -331,7 +339,7 @@ class Comet:
             self.filters[source_type] = func
 
     def register_router(self, source_types=None, func=None):
-        """Register a hydrator.
+        """Register a router.
 
         This method can be used either as a decorator or with a routing function passed in.
 
@@ -352,7 +360,7 @@ class Comet:
         self.routers.add(source_types, func)
 
     def register_escalator(self, source_types=None, func=None):
-        """Register a hydrator.
+        """Register a escalator.
 
         This method can be used either as a decorator or with a escalator function passed in.
 
@@ -484,8 +492,13 @@ class Comet:
             non_addressed_events = self.data_store.get_events_did_not_addressed(source_type)
             events_needs_escalation = []
             for event in non_addressed_events:
-                event_conf = get_event_conf(self.app_config['alerts_conf_path'], event)
-                if event_conf:
+
+                # load configuration for event
+                load_config = self.event_conf_loaders.get(source_type)
+                if load_config:
+                    load_config(event)
+                if hasattr(event, 'conf') and event.conf:
+                    event_conf = event.conf
                     escalate_cadence = self._extract_escalate_cadence(
                         event_conf.escalate_cadence)
                 # if event doesn't have conf, it will get the default
