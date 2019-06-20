@@ -149,6 +149,7 @@ class Comet:
         self.routers = SourceTypeFunction()
         self.escalators = SourceTypeFunction()
         self.real_time_sources = list()
+        self.real_time_config_providers = dict()
 
         self.database_uri = database_uri
         self.batch_config = {
@@ -171,15 +172,15 @@ class Comet:
             boolean: True if parsing was successful, False otherwise
         """
         LOG.info('received a message', extra={'source_type': source_type})
-        parser = self.parsers.get(source_type)
-        if not parser:
+        parse = self.parsers.get(source_type)
+        if not parse:
             LOG.warning(f'no parser found', extra={'source_type': source_type})
             return False
 
-        message_schema = parser()
-        message_dict, message_error = message_schema.loads(message)
-        if message_error:
-            LOG.warning(f'invalid message', extra={'source_type': source_type})
+        try:
+            message_dict = parse(message)
+        except ValueError as err:
+            LOG.warning(f'invalid message', extra={'source_type': source_type, 'error': str(err)})
             return False
 
         # Prepare an event container
@@ -201,7 +202,7 @@ class Comet:
         return True
 
     def set_config(self, source_type, config):
-        """Call to override default batching and escalation logic.
+        """Call to override default batching and batch escalation logic.
 
         Args:
             source_type (str): the source type to override the configuration for
@@ -234,27 +235,48 @@ class Comet:
         else:
             self.inputs.append((clazz, kwargs))
 
-    def register_parser(self, source_type, schema=None):
-        """Register a parser.
+    def register_parser(self, source_type, func=None):
+        """Register a parser function.
 
-        This method can be used either as a decorator or with a schema passed in.
+        This method can be used either as a decorator or with a parser function passed in.
 
         Args:
             source_type (str): the source type to register the parser for
-            schema (Optional[marshmallow.Schema]): a schema able to parse messages for the given source_type or None if
-                used as decorator
+            func (Optional[function]): a function that parse a message of type source_type, or None if used as a
+                decorator
         Return:
             function or None: if no scehma is given returns a decorator function, otherwise None
         """
-        if not schema:
+        if not func:
             # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
-            def decorator(schema):
-                self.parsers[source_type] = schema
-                return schema
+            def decorator(func):
+                self.parsers[source_type] = func
+                return func
 
             return decorator
         else:
-            self.parsers[source_type] = schema
+            self.parsers[source_type] = func
+
+    def register_config_provider(self, source_type, func=None):
+        """Register, per source type, a function that return config given a real time event.
+
+        This method can be used either as a decorator or with a parser function passed in.
+
+        Args:
+            source_type (str): the source type to register the config provider for
+            func (Optional[function]): a function that accepts an event and return a dictionary with configuration
+        Return:
+            dict: the config for the given real time event
+        """
+        if not func:
+            # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+            def decorator(func):
+                self.real_time_config_providers[source_type] = func
+                return func
+
+            return decorator
+        else:
+            self.real_time_config_providers[source_type] = func
 
     def register_real_time_source(self, source_type):
         """Register real time source type
@@ -308,7 +330,7 @@ class Comet:
             self.filters[source_type] = func
 
     def register_router(self, source_types=None, func=None):
-        """Register a hydrator.
+        """Register a router.
 
         This method can be used either as a decorator or with a routing function passed in.
 
@@ -329,7 +351,7 @@ class Comet:
         self.routers.add(source_types, func)
 
     def register_escalator(self, source_types=None, func=None):
-        """Register a hydrator.
+        """Register a escalator.
 
         This method can be used either as a decorator or with a escalator function passed in.
 
@@ -453,38 +475,26 @@ class Comet:
                                                     need_escalation_events)
 
     def handle_non_addressed_events(self):
-        """Check if there are real time events sent to the user
-           and were not addressed by him.
-           each event has escalate_cadence parameter which let us decide
-           when is the earliest time to escalate if the user didn't
-           addressed the alert.
+        """Check if there are real time events sent to a user that were not addressed.
+
+        Each event has escalate_cadence parameter which is used as the earliest time to escalate if the user did
+        not address the alert.
         """
         for source_type in self.real_time_sources:
-            source_type_config = self.batch_config
-            if source_type in self.specific_configs:
-                source_type_config.update(self.specific_configs[source_type])
-            else:
-                LOG.error('real time source type must have specific configs')
-
-            non_addressed_events = \
-                self.data_store.get_events_did_not_addressed(source_type)
-
+            non_addressed_events = self.data_store.get_events_did_not_addressed(source_type)
             events_needs_escalation = []
-            default_escalate_cadence = timedelta(hours=36)
-
             for event in non_addressed_events:
-                search_name = event.data.get('search_name')
-                if search_name is not None:
-                    alert_properties = \
-                        source_type_config['alerts'].get(search_name, {})
-                    escalate_cadence = \
-                        alert_properties.get('escalate_cadence',
-                                             default_escalate_cadence)
-                    event_sent_at = event.sent_at
+                # load configuration for event, using batch settings as default
+                source_type_config = {}
+                if source_type in self.real_time_config_providers:
+                    source_type_config = self.real_time_config_providers[source_type](event)
 
-                    # when is earliest time to escalate the specific event
-                    if event_sent_at <= datetime.utcnow() - escalate_cadence:
-                        events_needs_escalation.append(event)
+                escalate_cadence = source_type_config.get('escalate_cadence', timedelta(hours=36))
+
+                event_sent_at = event.sent_at
+                # when is earliest time to escalate the specific event
+                if event_sent_at <= datetime.utcnow() - escalate_cadence:
+                    events_needs_escalation.append(event)
 
             self._handle_events_need_escalation(source_type,
                                                 events_needs_escalation)
