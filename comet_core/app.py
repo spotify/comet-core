@@ -485,11 +485,11 @@ class Comet:
             events_needs_escalation = []
             for event in non_addressed_events:
                 # load configuration for event, using batch settings as default
-                source_type_config = {}
+                event_config = {}
                 if source_type in self.real_time_config_providers:
-                    source_type_config = self.real_time_config_providers[source_type](event)
+                    event_config = self.real_time_config_providers[source_type](event)
 
-                escalate_cadence = source_type_config.get('escalate_cadence', timedelta(hours=36))
+                escalate_cadence = event_config.get('escalate_cadence', timedelta(hours=36))
 
                 event_sent_at = event.sent_at
                 # when is earliest time to escalate the specific event
