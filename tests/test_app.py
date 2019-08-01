@@ -61,6 +61,8 @@ def test_process_unprocessed_events():
     app.register_parser('datastoretest2', json)
     app.register_parser('datastoretest3', json)
 
+    app.set_config('datastoretest2', {})
+
     specific_router = mock.Mock()
     router = mock.Mock()
     escalator = mock.Mock()
@@ -125,12 +127,11 @@ def test_event_container():
 
 def test_message_callback(app):
     @app.register_parser('test')
-    class TestParser:
-        def loads(self, msg):
-            ev = json.loads(msg)
-            if 'a' in ev:
-                return ev, None
-            return None, 'fail'
+    def parse_message(message):
+        ev = json.loads(message)
+        if 'a' in ev:
+            return ev, None
+        raise ValueError('fail')
 
     hydrator_mock = mock.Mock()
     app.register_hydrator('test', hydrator_mock)
@@ -150,12 +151,9 @@ def test_message_callback(app):
 
 def test_message_callback_filter(app):
     @app.register_parser('test')
-    class TestParser:
-        def loads(self, msg):
-            ev = json.loads(msg)
-            if 'a' in ev:
-                return ev, None
-            return None, 'fail'
+    def parse_message(message):
+        ev = json.loads(message)
+        return ev, None
 
     filter_mock = mock.Mock(return_value=None)
     app.register_filter('test', filter_mock)
@@ -181,14 +179,30 @@ def test_register_parser(app):
     assert not app.parsers
 
     @app.register_parser('test1')
-    class TestParser:
+    def parse_message(message):
         pass
 
     # Override existing
-    app.register_parser('test1', TestParser)
+    app.register_parser('test1', parse_message)
     assert len(app.parsers) == 1
-    app.register_parser('test2', TestParser)
+    app.register_parser('test2', parse_message)
     assert len(app.parsers) == 2
+
+
+def test_register_config_provider(app):
+    assert not app.real_time_config_providers
+
+    @app.register_config_provider('test1')
+    def test_register_conf(event):
+        return {}
+
+    # Override existing
+    app.register_config_provider('test1', test_register_conf)
+    assert len(app.real_time_config_providers) == 1, app.real_time_config_providers
+
+    # Add another
+    app.register_config_provider('test2', test_register_conf)
+    assert len(app.real_time_config_providers) == 2, app.real_time_config_providers
 
 
 def test_register_hydrator(app):
@@ -272,7 +286,7 @@ def test_register_escalator(app):
 
 def test_validate_config(app):
     @app.register_parser('test1')
-    class TestParser:
+    def parse_message(message):
         pass
 
     assert app.parsers
@@ -281,7 +295,7 @@ def test_validate_config(app):
 
     app = Comet()
 
-    app.register_parser('test1', TestParser)
+    app.register_parser('test1', parse_message)
 
     @app.register_router('test1')
     def test_router(*args):
@@ -389,25 +403,28 @@ def test_process_unprocessed_real_time_events():
 
 def test_handle_non_addressed_events():
     app = Comet()
-    app.register_parser('real_time_source', json)
-    app.register_parser('real_time_source2', json)
+
+    @app.register_parser('real_time_source')
+    def parse_message(message):
+        data = json.loads(message)
+        return data, {}
+
+    @app.register_parser('real_time_source2')
+    def parse_message(message):
+        data = json.loads(message)
+        return data, {}
+
+    @app.register_config_provider('real_time_source')
+    def register_conf(event):
+        return {"escalate_cadence": timedelta(minutes=45)}
+
+    @app.register_config_provider('real_time_source2')
+    def register_conf(event):
+        return {"escalate_cadence": timedelta(minutes=45)}
+
     app.register_real_time_source('real_time_source')
     app.register_real_time_source('real_time_source2')
 
-    app.set_config('real_time_source', {'alerts': {
-        'alert search name':
-            {
-                'escalate_cadence': timedelta(minutes=45),
-                'template': 'alerts_template'
-            }
-    }})
-    app.set_config('real_time_source2', {'alerts': {
-        'alert search name':
-            {
-                'escalate_cadence': timedelta(minutes=45),
-                'template': 'alerts_template'
-            }
-    }})
     escalator = mock.Mock()
     escalator2 = mock.Mock()
     app.register_escalator('real_time_source', func=escalator)
