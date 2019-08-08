@@ -415,7 +415,7 @@ class Comet:
                         ignored_events.append(event)
                     else:
                         real_time_events_by_owner.setdefault(event.owner,
-                                                         []).append(event)
+                                                             []).append(event)
                 # handle unprocessed real_time alerts
                 self._handle_real_time_alerts(real_time_events_by_owner,
                                               source_type)
