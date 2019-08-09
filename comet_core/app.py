@@ -411,8 +411,11 @@ class Comet:
             if source_type in self.real_time_sources:
                 real_time_events_by_owner = {}
                 for event in batch_events:
-                    real_time_events_by_owner.setdefault(event.owner,
-                                                         []).append(event)
+                    if self.data_store.fingerprint_is_ignored(event.fingerprint):
+                        ignored_events.append(event)
+                    else:
+                        real_time_events_by_owner.setdefault(event.owner,
+                                                             []).append(event)
                 # handle unprocessed real_time alerts
                 self._handle_real_time_alerts(real_time_events_by_owner,
                                               source_type)

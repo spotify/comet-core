@@ -385,6 +385,7 @@ def test_process_unprocessed_real_time_events():
     app.data_store.add_record(
         EventRecord(id=4,
                     received_at=datetime.utcnow() - timedelta(days=3),
+                    sent_at=datetime.utcnow() - timedelta(days=3),
                     source_type='real_time_source',
                     owner=check_user,
                     data={},
@@ -399,6 +400,40 @@ def test_process_unprocessed_real_time_events():
     assert router.call_count == 1
     assert real_time_router.call_args[0][2][0].owner == check_user
     assert escalator.call_count == 1
+
+
+@freeze_time('2018-05-09 09:00:00')
+# pylint: disable=missing-docstring
+def test_process_unprocessed_whitelisted_real_time_events():
+    app = Comet()
+    app.register_parser('real_time_source', json)
+    app.register_real_time_source('real_time_source')
+
+    real_time_router = mock.Mock()
+    router = mock.Mock()
+    escalator = mock.Mock()
+    app.register_router('real_time_source', func=real_time_router)
+    app.register_router(func=router)
+    app.register_escalator(func=escalator)
+
+    check_user = 'an_owner'
+    # user whitelisted real time event
+    app.data_store.add_record(
+        EventRecord(id=4,
+                    received_at=datetime.utcnow() - timedelta(days=3),
+                    sent_at=datetime.utcnow() - timedelta(days=3),
+                    source_type='real_time_source',
+                    owner=check_user,
+                    data={},
+                    fingerprint='f4'))
+
+    app.data_store.ignore_event_fingerprint('f4',
+                                            IgnoreFingerprintRecord.ACCEPT_RISK)
+
+    app.process_unprocessed_events()
+    # test the whitelisted event was not routed/escalated
+    assert real_time_router.call_count == 0
+    assert escalator.call_count == 0
 
 
 def test_handle_non_addressed_events():
