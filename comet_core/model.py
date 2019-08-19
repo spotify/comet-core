@@ -20,7 +20,7 @@ from sqlalchemy import Column, DateTime, Integer, JSON, String, UnicodeText, typ
 from sqlalchemy.ext.declarative import declarative_base
 
 
-class BaseRecordRepr(object):
+class BaseRecordRepr():
     """
     This class can be used by declarative_base, to add an automatic
     __repr__ method to *all* subclasses of BaseRecord.
@@ -38,7 +38,7 @@ class BaseRecordRepr(object):
                     if hasattr(v, '__set__')])
 
 
-BaseRecord = declarative_base(cls=BaseRecordRepr)  # pylint: disable=invalid-name
+BaseRecord = declarative_base(cls=BaseRecordRepr)
 
 
 class JSONType(types.TypeDecorator):  # pylint: disable=abstract-method

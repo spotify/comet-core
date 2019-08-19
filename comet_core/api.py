@@ -56,7 +56,7 @@ class CometApi():
             function: the original function
         """
 
-        # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+        # pylint: disable=missing-return-doc, missing-return-type-doc
         def decorator(func):
             self.auth_func = func
             return func
@@ -70,7 +70,7 @@ class CometApi():
             function: the original function
         """
 
-        # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+        # pylint: disable=missing-return-doc, missing-return-type-doc
         def decorator(func):
             self.hydrator_func = func
             return func

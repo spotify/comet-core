@@ -97,7 +97,7 @@ def str_to_hash(input_str):
         str: hash in hexadecimal representation (2 characters per byte)
     """
     input_bytes = input_str.encode('utf-8')
-    hash_str = shake_256(input_bytes).hexdigest(HASH_BYTES)
+    hash_str = shake_256(input_bytes).hexdigest(HASH_BYTES)  # pylint: disable=too-many-function-args
     return hash_str
 
 
