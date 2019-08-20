@@ -546,8 +546,10 @@ def test_get_real_time_events_need_escalation(ds_with_real_time_events,
 def test_ignore_event_fingerprint(ds_instance, event_to_escalate):
     """
     Check that the ignore fingerprint record wasn't added to the db on every change.
-    :param ds_instance: db instance to check
-    :param event_to_escalate: ignore_fingerprint record already exist in the db with ignore_type escalate.
+    Args:
+        ds_instance (DataStore): db instance to check
+        event_to_escalate (IgnoreFingerprintRecord): ignore_fingerprint record
+        already exist in the db with ignore_type escalate.
     """
     event_fingerprint = event_to_escalate.fingerprint
     ds_instance.ignore_event_fingerprint(event_fingerprint,
