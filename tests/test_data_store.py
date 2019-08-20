@@ -277,7 +277,7 @@ def test_check_needs_escalation():
     assert not data_store.check_needs_escalation(timedelta(days=1), five)
 
 
-def test_check_acceptedrisk_event_fingerprint():
+def test_check_acceptrisk_event_fingerprint():
     data_store = comet_core.data_store.DataStore('sqlite://')
 
     test_fingerprint1 = 'f1'
@@ -539,3 +539,22 @@ def test_get_real_time_events_need_escalation(ds_with_real_time_events,
         ds_with_real_time_events.get_events_need_escalation(source_type)
 
     assert event_to_escalate in events_to_escalate
+
+
+def test_ignore_event_fingerprint(ds_instance, event_to_escalate):
+    """
+    Check that the ignore fingerprint record wasn't added to the db on every change.
+    :param ds_instance: db instance to check
+    :param event_to_escalate: ignore_fingerprint record already exist in the db with ignore_type escalate.
+    """
+    event_fingerprint = event_to_escalate.fingerprint
+    ds_instance.ignore_event_fingerprint(event_fingerprint,
+                                         ignore_type=IgnoreFingerprintRecord.ACKNOWLEDGE)
+    ignore_record = ds_instance.get_ignore_fingerprint_record(event_fingerprint)
+    assert ignore_record.ignore_type == IgnoreFingerprintRecord.ACKNOWLEDGE
+
+    same_fingerprint_records = ds_instance.session.query(IgnoreFingerprintRecord). \
+            filter(IgnoreFingerprintRecord.fingerprint == event_fingerprint). \
+            filter((IgnoreFingerprintRecord.expires_at > datetime.utcnow()) |
+                   (IgnoreFingerprintRecord.expires_at.is_(None))).all()
+    assert len(same_fingerprint_records) == 1

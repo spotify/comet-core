@@ -241,16 +241,39 @@ class DataStore:
         return oldest_event.received_at <= datetime.utcnow() - escalation_time
 
     def ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None):
-        """Add a fingerprint to the list of ignored events
+        """Add a fingerprint to the list of ignored events or update an existing one.
         Args:
             fingerprint (str): fingerprint of the event to ignore
             ignore_type (str): the type (reason) for ignoring, for example IgnoreFingerprintRecord.SNOOZE
             expires_at (datetime.datetime): specify the time of the ignore expiration
         """
-        new_record = IgnoreFingerprintRecord(fingerprint=fingerprint, ignore_type=ignore_type, expires_at=expires_at)
-        self.session.begin()
-        self.session.add(new_record)
-        self.session.commit()
+        existing_fingerprint = self.get_ignore_fingerprint_record(fingerprint)
+        if existing_fingerprint:
+            self.session.begin()
+            existing_fingerprint.reported_at = datetime.utcnow()
+            existing_fingerprint.expires_at = expires_at
+            existing_fingerprint.ignore_type = ignore_type
+            self.session.commit()
+        else:
+            new_record = IgnoreFingerprintRecord(fingerprint=fingerprint,
+                                                 ignore_type=ignore_type,
+                                                 expires_at=expires_at)
+            self.session.begin()
+            self.session.add(new_record)
+            self.session.commit()
+
+    def get_ignore_fingerprint_record(self, fingerprint):
+        """Returns the ignore_fingerprint record if exist in the ignore_fingeprint table.
+        Args:
+            fingerprint (str): fingerprint to look for
+        Returns:
+            IgnoreFingerprintRecord: IgnoreFingerprintRecord with the given fingerprint
+        """
+        return self.session.query(IgnoreFingerprintRecord). \
+            filter(IgnoreFingerprintRecord.fingerprint == fingerprint). \
+            filter((IgnoreFingerprintRecord.expires_at > datetime.utcnow()) |
+                   (IgnoreFingerprintRecord.expires_at.is_(None))). \
+            one_or_none()
 
     def fingerprint_is_ignored(self, fingerprint):
         """Check if a fingerprint is marked as ignored (whitelisted or snoozed)
