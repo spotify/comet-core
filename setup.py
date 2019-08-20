@@ -29,10 +29,10 @@ setuptools.setup(
     packages=['comet_core'],
 
     install_requires=[
-        'Flask~=1.0.2',
-        'Flask-Cors~=3.0.4',
-        'python-json-logger~=0.1.9',
-        'SQLAlchemy~=1.3.0'
+        'Flask~=1.0',
+        'Flask-Cors~=3.0',
+        'python-json-logger~=0.1',
+        'SQLAlchemy~=1.3'
     ],
 
     include_package_data=True,
