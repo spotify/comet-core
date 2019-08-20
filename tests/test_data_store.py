@@ -279,7 +279,7 @@ def test_check_needs_escalation():
     assert not data_store.check_needs_escalation(timedelta(days=1), five)
 
 
-def test_check_acceptrisk_event_fingerprint():
+def test_check_acceptedrisk_event_fingerprint():
     data_store = comet_core.data_store.DataStore('sqlite://')
 
     test_fingerprint1 = 'f1'
