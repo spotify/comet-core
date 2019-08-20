@@ -277,19 +277,6 @@ class DataStore:
         self.session.add(new_record)
         self.session.commit()
 
-    def fingerprint_metadata_present(self, fingerprint):
-        """Check if a fingerprint is marked as ignored (whitelisted or snoozed)
-        Args:
-            fingerprint (str): fingerprint of the event
-        Returns:
-            bool: True if whitelisted
-        """
-        return self.session.query(IgnoreFingerprintRecord). \
-            filter(IgnoreFingerprintRecord.fingerprint == fingerprint). \
-            filter((IgnoreFingerprintRecord.expires_at > datetime.utcnow()) |
-                   (IgnoreFingerprintRecord.expires_at.is_(None))). \
-            count() >= 1
-
     def fingerprint_is_ignored(self, fingerprint):
         """Check if a fingerprint is marked as ignored (whitelisted or snoozed)
         Args:
