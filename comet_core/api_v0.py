@@ -154,6 +154,10 @@ def loadmetadata():
     try:
         fingerprint = get_and_check_fingerprint()
         headers = get_and_check_headers()
+
+        if not headers:
+            return action_failed('No headers supplied to loadmetadata')
+
         get_db().add_fingerprint_metadata(fingerprint, headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on loadmetadata')
@@ -314,7 +318,7 @@ def acceptrisk_post():
     return acceptrisk()
 
 
-@bp.route('/load_metadata', methods=['POST'])
+@bp.route('/loadmetadata', methods=['POST'])
 @requires_auth
 def loadmetadata_post():
     """This endpoint expose the loadmetadata functionality via POST request.

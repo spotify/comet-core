@@ -98,11 +98,23 @@ def test_get_issues_no_hydrator():
 
 
 def test_acceptrisk(client):
-    """Test the accesprtrisk POST endpoint is working"""
+    """Test the acceptrisk POST endpoint is working"""
     g.test_authorized_for = []
     res = client.post('/v0/acceptrisk', json={'fingerprint': ''})
     assert res.json
     res = client.post('/v0/acceptrisk', json={})
+    assert res.json.get('status') == 'error'
+
+
+def test_loadmetadata(client):
+    """Test the loadmetadata POST endpoint is working"""
+    g.test_authorized_for = []
+    res = client.post('/v0/loadmetadata',
+                      json={'fingerprint': ''},
+                      headers={'content': 'content'})
+    assert res.json
+
+    res = client.post('/v0/loadmetadata', json={})
     assert res.json.get('status') == 'error'
 
 
