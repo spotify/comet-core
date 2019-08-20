@@ -21,10 +21,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.expression import func
 
-from comet_core.model import BaseRecord, EventRecord, IgnoreFingerprintRecord
+from comet_core.model import BaseRecord, EventRecord, IgnoreFingerprintRecord, FingerprintMetadataRecord
 
 
 Session = sessionmaker(autocommit=True)  # pylint: disable=invalid-name
+# pylint: disable=too-many-public-methods
 
 
 def now_and_next(some_iterable):
@@ -240,20 +241,6 @@ class DataStore:
 
         return oldest_event.received_at <= datetime.utcnow() - escalation_time
 
-    def handle_ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None, headers=""):
-        """Adds fingerprint to the list of ignored events and saves the
-        web headers as Fingerprint Metadata
-        Args:
-            fingerprint (str): fingerprint of the event to ignore
-            ignore_type (str): the type (reason) for ignoring, for example IgnoreFingerprintRecord.SNOOZE
-            expires_at (datetime.datetime): specify the time of the ignore expiration
-            headers (dict): the headers of the incoming web request
-        """
-        ignore_event_fingerprint(fingerprint, ignore_type, expires_at)
-
-        if headers:
-            add_fingerprint_metadata(fingerprint, headers)
-
     def add_fingerprint_metadata(self, fingerprint, headers=""):
         """Add fingerprint metadata for hydration purposes
         Args:
@@ -276,6 +263,20 @@ class DataStore:
         self.session.begin()
         self.session.add(new_record)
         self.session.commit()
+
+    def handle_ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None, headers=""):
+        """Adds fingerprint to the list of ignored events and saves the
+        web headers as Fingerprint Metadata
+        Args:
+            fingerprint (str): fingerprint of the event to ignore
+            ignore_type (str): the type (reason) for ignoring, for example IgnoreFingerprintRecord.SNOOZE
+            expires_at (datetime.datetime): specify the time of the ignore expiration
+            headers (dict): the headers of the incoming web request
+        """
+        self.ignore_event_fingerprint(fingerprint, ignore_type, expires_at=expires_at)
+
+        if headers:
+            self.add_fingerprint_metadata(fingerprint, headers=headers)
 
     def fingerprint_is_ignored(self, fingerprint):
         """Check if a fingerprint is marked as ignored (whitelisted or snoozed)

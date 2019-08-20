@@ -16,7 +16,6 @@
 
 Can be used by GET response links in email messages or form POST requests from a web ui."""
 
-import json
 import logging
 import re
 from datetime import timedelta, datetime
@@ -140,10 +139,27 @@ def get_and_check_headers():
     """Reads the headers from the incoming request.
 
     Returns:
-        str: headers
+        dict: headers
     """
-    headers = request.headers
+    headers = dict(request.headers)
     return headers
+
+
+def loadmetadata():
+    """Load metadata for a submitted fingerprint as a header.
+
+    Returns:
+        str: the HTTP response string
+    """
+    try:
+        fingerprint = get_and_check_fingerprint()
+        headers = get_and_check_headers()
+        get_db().add_fingerprint_metadata(fingerprint, headers=headers)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception('Got exception on loadmetadata')
+        return action_failed('loadmetadata failed')
+
+    return action_succeeded('Alert successfully added metadata.')
 
 
 def acceptrisk():
@@ -156,8 +172,8 @@ def acceptrisk():
         fingerprint = get_and_check_fingerprint()
         headers = get_and_check_headers()
         get_db().handle_ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ACCEPT_RISK,
-                                          headers=headers)
+                                                 IgnoreFingerprintRecord.ACCEPT_RISK,
+                                                 headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on acceptrisk')
         return action_failed('acceptrisk failed')
@@ -176,9 +192,9 @@ def snooze():
         headers = get_and_check_headers()
         expires_at = datetime.utcnow() + timedelta(days=30)
         get_db().handle_ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.SNOOZE,
-                                          expires_at=expires_at,
-                                          headers=headers)
+                                                 IgnoreFingerprintRecord.SNOOZE,
+                                                 expires_at=expires_at,
+                                                 headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on snooze')
         return action_failed('snooze failed')
@@ -196,8 +212,8 @@ def acknowledge():
         fingerprint = get_and_check_fingerprint()
         headers = get_and_check_headers()
         get_db().handle_ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ACKNOWLEDGE,
-                                          headers=headers)
+                                                 IgnoreFingerprintRecord.ACKNOWLEDGE,
+                                                 headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on acknowledge')
         return action_failed('acknowledgement failed for some reason')
@@ -215,8 +231,8 @@ def falsepositive():
         fingerprint = get_and_check_fingerprint()
         headers = get_and_check_headers()
         get_db().handle_ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.FALSE_POSITIVE,
-                                          headers=headers)
+                                                 IgnoreFingerprintRecord.FALSE_POSITIVE,
+                                                 headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on falsepositive')
         return action_failed('Reporting as false positive failed.')
@@ -235,8 +251,8 @@ def escalate():
         headers = get_and_check_headers()
         # indication that the user addressed the alert and escalate.
         get_db().handle_ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ESCALATE_MANUALLY,
-                                          headers=headers)
+                                                 IgnoreFingerprintRecord.ESCALATE_MANUALLY,
+                                                 headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on escalate real time alert')
         return action_failed('Escalation failed for some reason')
@@ -296,6 +312,17 @@ def acceptrisk_post():
         str: The response from the acceptrisk function
     """
     return acceptrisk()
+
+
+@bp.route('/load_metadata', methods=['POST'])
+@requires_auth
+def loadmetadata_post():
+    """This endpoint expose the loadmetadata functionality via POST request.
+
+    Returns:
+        str: The response from the loadmetadatafunction
+    """
+    return loadmetadata()
 
 
 @bp.route('/snooze', methods=['GET'])
