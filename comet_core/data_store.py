@@ -240,7 +240,22 @@ class DataStore:
 
         return oldest_event.received_at <= datetime.utcnow() - escalation_time
 
-    def ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None):
+    def handle_ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None, headers=""):
+        ignore_event_fingerprint(fingerprint, ignore_type, expires_at)
+        add_fingerprint_metadata(fingerprint, headers)
+
+    def add_fingerprint_metadata(self, fingerprint, headers=""):
+        """Add fingerprint metadata for hydration purposes
+        Args:
+            fingerprint (str): fingerprint of the event to ignore
+            headers (str): the headers of the incoming web request
+        """
+        new_record = FingerprintMetadataRecord(fingerprint=fingerprint, headers=headers)
+        self.session.begin()
+        self.session.add(new_record)
+        self.session.commit()
+
+    def ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None, headers=""):
         """Add a fingerprint to the list of ignored events
         Args:
             fingerprint (str): fingerprint of the event to ignore

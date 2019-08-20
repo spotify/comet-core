@@ -16,6 +16,7 @@
 
 Can be used by GET response links in email messages or form POST requests from a web ui."""
 
+import json
 import logging
 import re
 from datetime import timedelta, datetime
@@ -135,6 +136,16 @@ def get_and_check_fingerprint():
     return fingerprint
 
 
+def get_and_check_headers():
+    """Reads the headers from the incoming request.
+
+    Returns:
+        str: headers
+    """
+    headers = json.dumps(request.headers)
+    return headers
+
+
 def acceptrisk():
     """Accept risk for alerts with the given fingerprint (silence them).
 
@@ -143,8 +154,10 @@ def acceptrisk():
     """
     try:
         fingerprint = get_and_check_fingerprint()
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ACCEPT_RISK)
+        headers = get_and_check_headers()
+        get_db().handle_ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.ACCEPT_RISK,
+                                          headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on acceptrisk')
         return action_failed('acceptrisk failed')
@@ -160,10 +173,12 @@ def snooze():
     """
     try:
         fingerprint = get_and_check_fingerprint()
+        headers = get_and_check_headers()
         expires_at = datetime.utcnow() + timedelta(days=30)
-        get_db().ignore_event_fingerprint(fingerprint,
+        get_db().handle_ignore_event_fingerprint(fingerprint,
                                           IgnoreFingerprintRecord.SNOOZE,
-                                          expires_at=expires_at)
+                                          expires_at=expires_at,
+                                          headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on snooze')
         return action_failed('snooze failed')
@@ -179,8 +194,10 @@ def acknowledge():
     """
     try:
         fingerprint = get_and_check_fingerprint()
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ACKNOWLEDGE)
+        headers = get_and_check_headers()
+        get_db().handle_ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.ACKNOWLEDGE,
+                                          headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on acknowledge')
         return action_failed('acknowledgement failed for some reason')
@@ -196,8 +213,10 @@ def falsepositive():
     """
     try:
         fingerprint = get_and_check_fingerprint()
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.FALSE_POSITIVE)
+        headers = get_and_check_headers()
+        get_db().handle_ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.FALSE_POSITIVE,
+                                          headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on falsepositive')
         return action_failed('Reporting as false positive failed.')
@@ -213,9 +232,11 @@ def escalate():
     """
     try:
         fingerprint = get_and_check_fingerprint()
+        headers = get_and_check_headers()
         # indication that the user addressed the alert and escalate.
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ESCALATE_MANUALLY)
+        get_db().handle_ignore_event_fingerprint(fingerprint,
+                                          IgnoreFingerprintRecord.ESCALATE_MANUALLY,
+                                          headers=headers)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on escalate real time alert')
         return action_failed('Escalation failed for some reason')
@@ -318,7 +339,7 @@ def falsepositive_get():
 @bp.route('/falsepositive', methods=['POST'])
 @requires_auth
 def falsepositive_post():
-    """This endpoint expose the falsepositive functionality via POST request.
+    """This endpoint expose the  functionality via POST request.
     For details on the falsepositive function see :func:`~comet_core.api_v0.falsepositive`
 
     Returns:

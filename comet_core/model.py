@@ -142,3 +142,12 @@ class IgnoreFingerprintRecord(BaseRecord):
     FALSE_POSITIVE = 'falsepositive'
     ACKNOWLEDGE = 'acknowledge'
     ESCALATE_MANUALLY = 'escalate_manually'
+
+
+class FingerprintMetadataRecord(BaseRecord):
+    """Userfingerprintmetadata model.
+    """
+    __tablename__ = 'fingerprint_metadata'
+    id = Column(Integer, primary_key=True)
+    fingerprint = Column(String(250))
+    headers = Column(String(1024))
