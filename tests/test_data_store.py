@@ -19,6 +19,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from freezegun import freeze_time
+
 import comet_core.data_store
 from comet_core.data_store import remove_duplicate_events
 from comet_core.model import EventRecord, IgnoreFingerprintRecord
@@ -81,7 +83,7 @@ def test_date_sorting():
     assert latest.received_at == new.received_at
 
 
-@pytest.mark.freeze_time('2018-07-07 10:00:00')
+@freeze_time('2018-07-07 10:00:00')
 # pylint: disable=missing-docstring, invalid-name
 def test_get_unprocessed_events_batch_will_wait(data_store_with_test_events):
     val = data_store_with_test_events.get_unprocessed_events_batch(
@@ -91,7 +93,7 @@ def test_get_unprocessed_events_batch_will_wait(data_store_with_test_events):
     assert val == []
 
 
-@pytest.mark.freeze_time('2018-07-07 10:00:00')
+@freeze_time('2018-07-07 10:00:00')
 # pylint: disable=missing-docstring
 def test_get_unprocessed_events(data_store_with_test_events):
     val = data_store_with_test_events.get_unprocessed_events_batch(
@@ -101,7 +103,7 @@ def test_get_unprocessed_events(data_store_with_test_events):
     assert len(val) == 2
 
 
-@pytest.mark.freeze_time('2018-07-07 10:00:00')
+@freeze_time('2018-07-07 10:00:00')
 # pylint: disable=missing-docstring, invalid-name
 def test_get_unprocessed_events_max_wait(data_store_with_test_events):
     val = data_store_with_test_events.get_unprocessed_events_batch(
@@ -117,7 +119,7 @@ def test_get_unprocessed_events_max_wait(data_store_with_test_events):
     assert len(val) == 2
 
 
-@pytest.mark.freeze_time('2018-07-07 10:00:00')
+@freeze_time('2018-07-07 10:00:00')
 # pylint: disable=missing-docstring, invalid-name
 def test_get_unprocessed_events_wait_for_more(data_store_with_test_events):
     val = data_store_with_test_events.get_unprocessed_events_batch(
@@ -133,7 +135,7 @@ def test_get_unprocessed_events_wait_for_more(data_store_with_test_events):
     assert len(val) == 2
 
 
-@pytest.mark.freeze_time('2018-07-07 10:00:00')
+@freeze_time('2018-07-07 10:00:00')
 # pylint: disable=missing-docstring, invalid-name
 def test_update_sent_at_timestamp_to_now(data_store_with_test_events):
     val = data_store_with_test_events.get_unprocessed_events_batch(
@@ -147,7 +149,7 @@ def test_update_sent_at_timestamp_to_now(data_store_with_test_events):
     assert isinstance(record.sent_at, datetime)
 
 
-@pytest.mark.freeze_time('2018-07-07 10:00:00')
+@freeze_time('2018-07-07 10:00:00')
 # pylint: disable=missing-docstring, invalid-name
 def test_update_event_escalation_at_to_now(data_store_with_test_events):
     val = data_store_with_test_events.get_unprocessed_events_batch(
@@ -161,7 +163,7 @@ def test_update_event_escalation_at_to_now(data_store_with_test_events):
     assert isinstance(record.escalated_at, datetime)
 
 
-@pytest.mark.freeze_time('2018-07-07 10:00:00')
+@freeze_time('2018-07-07 10:00:00')
 # pylint: disable=missing-docstring, invalid-name
 def test_update_processed_at_timestamp_to_now(data_store_with_test_events):
     val = data_store_with_test_events.get_unprocessed_events_batch(
@@ -475,7 +477,7 @@ def ds_instance():
 
 @pytest.fixture
 def non_addressed_event():
-    # event sent but missing in the ignore_event table to 
+    # event sent but missing in the ignore_event table to
     # indicate that it wasn't addressed by the user
     event = EventRecord(received_at=datetime(2018, 7, 7, 9, 0, 0),
                       source_type='datastoretest',

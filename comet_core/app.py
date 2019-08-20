@@ -174,13 +174,13 @@ class Comet:
         LOG.info('received a message', extra={'source_type': source_type})
         parse = self.parsers.get(source_type)
         if not parse:
-            LOG.warning(f'no parser found', extra={'source_type': source_type})
+            LOG.warning('no parser found', extra={'source_type': source_type})
             return False
 
         try:
             message_dict = parse(message)
         except ValueError as err:
-            LOG.warning(f'invalid message', extra={'source_type': source_type, 'error': str(err)})
+            LOG.warning('invalid message', extra={'source_type': source_type, 'error': str(err)})
             return False
 
         # Prepare an event container
@@ -226,14 +226,14 @@ class Comet:
             function or None: if no clazz is given returns a decorator function, otherwise None
         """
         if not clazz:
-            # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+            # pylint: disable=missing-return-doc, missing-return-type-doc
             def decorator(clazz):
                 self.inputs.append((clazz, kwargs))
                 return clazz
 
             return decorator
-        else:
-            self.inputs.append((clazz, kwargs))
+
+        self.inputs.append((clazz, kwargs))
 
     def register_parser(self, source_type, func=None):
         """Register a parser function.
@@ -248,14 +248,14 @@ class Comet:
             function or None: if no scehma is given returns a decorator function, otherwise None
         """
         if not func:
-            # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+            # pylint: disable=missing-return-doc, missing-return-type-doc
             def decorator(func):
                 self.parsers[source_type] = func
                 return func
 
             return decorator
-        else:
-            self.parsers[source_type] = func
+
+        self.parsers[source_type] = func
 
     def register_config_provider(self, source_type, func=None):
         """Register, per source type, a function that return config given a real time event.
@@ -269,14 +269,14 @@ class Comet:
             dict: the config for the given real time event
         """
         if not func:
-            # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+            # pylint: disable=missing-return-doc, missing-return-type-doc
             def decorator(func):
                 self.real_time_config_providers[source_type] = func
                 return func
 
             return decorator
-        else:
-            self.real_time_config_providers[source_type] = func
+
+        self.real_time_config_providers[source_type] = func
 
     def register_real_time_source(self, source_type):
         """Register real time source type
@@ -298,14 +298,14 @@ class Comet:
             function or None: if no func is given returns a decorator function, otherwise None
         """
         if not func:
-            # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+            # pylint: disable=missing-return-doc, missing-return-type-doc
             def decorator(func):
                 self.hydrators[source_type] = func
                 return func
 
             return decorator
-        else:
-            self.hydrators[source_type] = func
+
+        self.hydrators[source_type] = func
 
     def register_filter(self, source_type, func=None):
         """Register a filter function to filter events before saving them to the db.
@@ -320,14 +320,14 @@ class Comet:
             function or None: if no func is given returns a decorator function, otherwise None
         """
         if not func:
-            # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+            # pylint: disable=missing-return-doc, missing-return-type-doc
             def decorator(func):
                 self.filters[source_type] = func
                 return func
 
             return decorator
-        else:
-            self.filters[source_type] = func
+
+        self.filters[source_type] = func
 
     def register_router(self, source_types=None, func=None):
         """Register a router.
@@ -342,12 +342,13 @@ class Comet:
             function or None: if no func is given returns a decorator function, otherwise None
         """
         if not func:
-            # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+            # pylint: disable=missing-return-doc, missing-return-type-doc
             def decorator(func):
                 self.routers.add(source_types, func)
                 return func
 
             return decorator
+
         self.routers.add(source_types, func)
 
     def register_escalator(self, source_types=None, func=None):
@@ -363,13 +364,14 @@ class Comet:
         Return:
             function or None: if no func is given returns a decorator function, otherwise None
         """
-        # pylint: disable=missing-docstring, missing-return-doc, missing-return-type-doc
+        # pylint: disable=missing-return-doc, missing-return-type-doc
         if not func:
             def decorator(func):
                 self.escalators.add(source_types, func)
                 return func
 
             return decorator
+
         self.escalators.add(source_types, func)
 
     #  pylint: disable=too-many-branches
@@ -411,8 +413,11 @@ class Comet:
             if source_type in self.real_time_sources:
                 real_time_events_by_owner = {}
                 for event in batch_events:
-                    real_time_events_by_owner.setdefault(event.owner,
-                                                         []).append(event)
+                    if self.data_store.fingerprint_is_ignored(event.fingerprint):
+                        ignored_events.append(event)
+                    else:
+                        real_time_events_by_owner.setdefault(event.owner,
+                                                             []).append(event)
                 # handle unprocessed real_time alerts
                 self._handle_real_time_alerts(real_time_events_by_owner,
                                               source_type)

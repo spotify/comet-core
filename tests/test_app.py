@@ -19,38 +19,10 @@ from unittest import mock
 import json
 
 from freezegun import freeze_time
-from marshmallow import fields, Schema
 
 from comet_core import Comet
 from comet_core.app import EventContainer
 from comet_core.model import EventRecord, IgnoreFingerprintRecord
-
-# Helpers for test_process_unsent_events_recipient_override
-RECORD_OWNER = 'not-this-one@test.com'
-OVERRIDE_OWNER = 'override@test.com'
-
-
-class TheTestSchema(Schema):
-    """Testing schema."""
-    test = fields.Str(required=True)
-
-
-class TheTestType():  # pylint: disable=abstract-method
-    """Testing type."""
-    schema = TheTestSchema
-    config = {
-        'owner_reminder_cadence': timedelta(days=7)
-    }
-
-    def set_record(self, record):
-        self.record = record
-        self.record.owner_email = RECORD_OWNER
-        self.record.fingerprint = 'test'
-
-
-EVENT_RECORD_WITH_OVERRIDE = EventRecord(received_at=datetime(2018, 2, 19, 0, 0, 11),
-                                         source_type='test',
-                                         data={'test': 'test'})
 
 
 @freeze_time('2018-05-09 09:00:00')
@@ -385,6 +357,7 @@ def test_process_unprocessed_real_time_events():
     app.data_store.add_record(
         EventRecord(id=4,
                     received_at=datetime.utcnow() - timedelta(days=3),
+                    sent_at=datetime.utcnow() - timedelta(days=3),
                     source_type='real_time_source',
                     owner=check_user,
                     data={},
@@ -399,6 +372,40 @@ def test_process_unprocessed_real_time_events():
     assert router.call_count == 1
     assert real_time_router.call_args[0][2][0].owner == check_user
     assert escalator.call_count == 1
+
+
+@freeze_time('2018-05-09 09:00:00')
+# pylint: disable=missing-docstring
+def test_process_unprocessed_whitelisted_real_time_events():
+    app = Comet()
+    app.register_parser('real_time_source', json)
+    app.register_real_time_source('real_time_source')
+
+    real_time_router = mock.Mock()
+    router = mock.Mock()
+    escalator = mock.Mock()
+    app.register_router('real_time_source', func=real_time_router)
+    app.register_router(func=router)
+    app.register_escalator(func=escalator)
+
+    check_user = 'an_owner'
+    # user whitelisted real time event
+    app.data_store.add_record(
+        EventRecord(id=4,
+                    received_at=datetime.utcnow() - timedelta(days=3),
+                    sent_at=datetime.utcnow() - timedelta(days=3),
+                    source_type='real_time_source',
+                    owner=check_user,
+                    data={},
+                    fingerprint='f4'))
+
+    app.data_store.ignore_event_fingerprint('f4',
+                                            IgnoreFingerprintRecord.ACCEPT_RISK)
+
+    app.process_unprocessed_events()
+    # test the whitelisted event was not routed/escalated
+    assert real_time_router.call_count == 0
+    assert escalator.call_count == 0
 
 
 def test_handle_non_addressed_events():

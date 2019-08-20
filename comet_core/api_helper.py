@@ -57,7 +57,7 @@ def requires_auth(f):
     """Decorator for requiring auth in functions"""
 
     @wraps(f)
-    # pylint: disable=missing-docstring,missing-return-doc,missing-return-type-doc
+    # pylint: disable=missing-return-doc,missing-return-type-doc
     def decorated(*args, **kwargs):
         auth_func = current_app.config.get('auth_func')
         g.authorized_for = []
