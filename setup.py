@@ -15,17 +15,9 @@
 import os
 import setuptools
 
-__location__ = os.path.realpath(os.path.dirname(__file__))
-
-with open(os.path.join(__location__, 'requirements.txt')) as f:
-    requirements = f.read().splitlines()
-
-git_requirements = [r for r in requirements if r.startswith('-e')]
-requirements = [r for r in requirements if not r.startswith('-e')]
-
 setuptools.setup(
     name="comet-core",
-    version="2.0.0",
+    version="2.0.2",
     url="https://github.com/spotify/comet-core",
 
     author="Spotify Platform Security",
@@ -36,8 +28,12 @@ setuptools.setup(
 
     packages=['comet_core'],
 
-    install_requires=requirements,
-    dependency_links=git_requirements,
+    install_requires=[
+        'Flask~=1.0',
+        'Flask-Cors~=3.0',
+        'python-json-logger~=0.1',
+        'SQLAlchemy~=1.3'
+    ],
 
     include_package_data=True,
 
