@@ -241,21 +241,31 @@ class DataStore:
         return oldest_event.received_at <= datetime.utcnow() - escalation_time
 
     def handle_ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None, headers=""):
+        """Adds fingerprint to the list of ignored events and saves the
+        web headers as Fingerprint Metadata
+        Args:
+            fingerprint (str): fingerprint of the event to ignore
+            ignore_type (str): the type (reason) for ignoring, for example IgnoreFingerprintRecord.SNOOZE
+            expires_at (datetime.datetime): specify the time of the ignore expiration
+            headers (dict): the headers of the incoming web request
+        """
         ignore_event_fingerprint(fingerprint, ignore_type, expires_at)
-        add_fingerprint_metadata(fingerprint, headers)
+
+        if headers:
+            add_fingerprint_metadata(fingerprint, headers)
 
     def add_fingerprint_metadata(self, fingerprint, headers=""):
         """Add fingerprint metadata for hydration purposes
         Args:
             fingerprint (str): fingerprint of the event to ignore
-            headers (str): the headers of the incoming web request
+            headers (dict): the headers of the incoming web request
         """
         new_record = FingerprintMetadataRecord(fingerprint=fingerprint, headers=headers)
         self.session.begin()
         self.session.add(new_record)
         self.session.commit()
 
-    def ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None, headers=""):
+    def ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None):
         """Add a fingerprint to the list of ignored events
         Args:
             fingerprint (str): fingerprint of the event to ignore
@@ -266,6 +276,19 @@ class DataStore:
         self.session.begin()
         self.session.add(new_record)
         self.session.commit()
+
+    def fingerprint_metadata_present(self, fingerprint):
+        """Check if a fingerprint is marked as ignored (whitelisted or snoozed)
+        Args:
+            fingerprint (str): fingerprint of the event
+        Returns:
+            bool: True if whitelisted
+        """
+        return self.session.query(IgnoreFingerprintRecord). \
+            filter(IgnoreFingerprintRecord.fingerprint == fingerprint). \
+            filter((IgnoreFingerprintRecord.expires_at > datetime.utcnow()) |
+                   (IgnoreFingerprintRecord.expires_at.is_(None))). \
+            count() >= 1
 
     def fingerprint_is_ignored(self, fingerprint):
         """Check if a fingerprint is marked as ignored (whitelisted or snoozed)
@@ -278,6 +301,19 @@ class DataStore:
             filter(IgnoreFingerprintRecord.fingerprint == fingerprint). \
             filter((IgnoreFingerprintRecord.expires_at > datetime.utcnow()) |
                    (IgnoreFingerprintRecord.expires_at.is_(None))). \
+            count() >= 1
+
+    def fingerprint_metadata_matches(self, fingerprint, headers):
+        """Check if a fingerprint is marked as ignored (whitelisted or snoozed)
+        Args:
+            fingerprint (str): fingerprint of the event
+            headers (dict): event headers
+        Returns:
+            bool: True if whitelisted
+        """
+        return self.session.query(FingerprintMetadataRecord). \
+            filter(FingerprintMetadataRecord.fingerprint == fingerprint). \
+            filter(FingerprintMetadataRecord.headers == headers). \
             count() >= 1
 
     def may_send_escalation(self, source_type, escalation_reminder_cadence):

@@ -150,4 +150,5 @@ class FingerprintMetadataRecord(BaseRecord):
     __tablename__ = 'fingerprint_metadata'
     id = Column(Integer, primary_key=True)
     fingerprint = Column(String(250))
-    headers = Column(String(1024))
+    reported_at = Column(DateTime, default=datetime.utcnow)
+    headers = Column(JSONType())

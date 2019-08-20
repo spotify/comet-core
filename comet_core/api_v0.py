@@ -142,7 +142,7 @@ def get_and_check_headers():
     Returns:
         str: headers
     """
-    headers = json.dumps(request.headers)
+    headers = request.headers
     return headers
 
 

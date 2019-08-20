@@ -281,24 +281,44 @@ def test_check_acceptedrisk_event_fingerprint():
     data_store = comet_core.data_store.DataStore('sqlite://')
 
     test_fingerprint1 = 'f1'
+    test_header1 = {'a': 'b'}
 
     assert not data_store.fingerprint_is_ignored(test_fingerprint1)
 
-    data_store.ignore_event_fingerprint(test_fingerprint1, IgnoreFingerprintRecord.ACCEPT_RISK)
+    data_store.handle_ignore_event_fingerprint(test_fingerprint1,
+                                               IgnoreFingerprintRecord.ACCEPT_RISK,
+                                               headers=test_header1)
     assert data_store.fingerprint_is_ignored(test_fingerprint1)
+    assert data_store.fingerprint_metadata_matches(test_fingerprint1, test_header1)
 
+def test_check_acceptedrisk_event_fingerprint_no_header():
+    data_store = comet_core.data_store.DataStore('sqlite://')
+
+    test_fingerprint1 = 'f1'
+    test_header1 = {'a': 'b'}
+
+    assert not data_store.fingerprint_is_ignored(test_fingerprint1)
+
+    data_store.handle_ignore_event_fingerprint(test_fingerprint1,
+                                               IgnoreFingerprintRecord.ACCEPT_RISK)
+
+    assert data_store.fingerprint_is_ignored(test_fingerprint1)
+    assert not data_store.fingerprint_metadata_matches(test_fingerprint1, test_header1)
 
 def test_check_snoozed_event_fingerprint():
     data_store = comet_core.data_store.DataStore('sqlite://')
 
     test_fingerprint1 = 'f1'
+    test_header1 = {'a': 'b'}
     test_fingerprint2 = 'f2'
 
     assert not data_store.fingerprint_is_ignored(test_fingerprint1)
 
-    data_store.ignore_event_fingerprint(test_fingerprint1, ignore_type=IgnoreFingerprintRecord.SNOOZE,
-                                        expires_at=datetime.utcnow() + timedelta(days=30))
+    data_store.handle_ignore_event_fingerprint(test_fingerprint1, ignore_type=IgnoreFingerprintRecord.SNOOZE,
+                                        expires_at=datetime.utcnow() + timedelta(days=30),
+                                        headers=test_header1)
     assert data_store.fingerprint_is_ignored(test_fingerprint1)
+    assert data_store.fingerprint_metadata_matches(test_fingerprint1, test_header1)
 
     test_snooze_record = IgnoreFingerprintRecord(fingerprint=test_fingerprint2,
                                                  ignore_type=IgnoreFingerprintRecord.SNOOZE,
@@ -495,7 +515,7 @@ def addressed_event(ds_instance):
                       sent_at=datetime(2018, 7, 7, 9, 30, 0),
                       data={})
     ack_event.fingerprint = 'f2'
-    ds_instance.ignore_event_fingerprint(ack_event.fingerprint,
+    ds_instance.handle_ignore_event_fingerprint(ack_event.fingerprint,
                               ignore_type=IgnoreFingerprintRecord.ACKNOWLEDGE)
     return ack_event
 
@@ -509,7 +529,7 @@ def event_to_escalate(ds_instance):
                       sent_at=datetime(2018, 7, 7, 9, 30, 0),
                       data={})
     escalated_event.fingerprint = 'f3'
-    ds_instance.ignore_event_fingerprint(escalated_event.fingerprint,
+    ds_instance.handle_ignore_event_fingerprint(escalated_event.fingerprint,
                               ignore_type=IgnoreFingerprintRecord.ESCALATE_MANUALLY)
     return escalated_event
 
