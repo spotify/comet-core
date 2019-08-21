@@ -264,19 +264,15 @@ class DataStore:
         self.session.add(new_record)
         self.session.commit()
 
-    def handle_ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None, headers=""):
-        """Adds fingerprint to the list of ignored events and saves the
-        web headers as Fingerprint Metadata
+    def handle_ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None):
+        """Adds fingerprint to the list of ignored events. Readies the handler
+        in case we want to add the ability to save header information.
         Args:
             fingerprint (str): fingerprint of the event to ignore
             ignore_type (str): the type (reason) for ignoring, for example IgnoreFingerprintRecord.SNOOZE
             expires_at (datetime.datetime): specify the time of the ignore expiration
-            headers (dict): the headers of the incoming web request
         """
         self.ignore_event_fingerprint(fingerprint, ignore_type, expires_at=expires_at)
-
-        if headers:
-            self.add_fingerprint_metadata(fingerprint, headers=headers)
 
     def fingerprint_is_ignored(self, fingerprint):
         """Check if a fingerprint is marked as ignored (whitelisted or snoozed)

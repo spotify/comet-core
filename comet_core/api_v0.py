@@ -174,10 +174,8 @@ def acceptrisk():
     """
     try:
         fingerprint = get_and_check_fingerprint()
-        headers = get_and_check_headers()
         get_db().handle_ignore_event_fingerprint(fingerprint,
-                                                 IgnoreFingerprintRecord.ACCEPT_RISK,
-                                                 headers=headers)
+                                                 IgnoreFingerprintRecord.ACCEPT_RISK)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on acceptrisk')
         return action_failed('acceptrisk failed')
@@ -193,12 +191,10 @@ def snooze():
     """
     try:
         fingerprint = get_and_check_fingerprint()
-        headers = get_and_check_headers()
         expires_at = datetime.utcnow() + timedelta(days=30)
         get_db().handle_ignore_event_fingerprint(fingerprint,
                                                  IgnoreFingerprintRecord.SNOOZE,
-                                                 expires_at=expires_at,
-                                                 headers=headers)
+                                                 expires_at=expires_at)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on snooze')
         return action_failed('snooze failed')
@@ -214,10 +210,8 @@ def acknowledge():
     """
     try:
         fingerprint = get_and_check_fingerprint()
-        headers = get_and_check_headers()
         get_db().handle_ignore_event_fingerprint(fingerprint,
-                                                 IgnoreFingerprintRecord.ACKNOWLEDGE,
-                                                 headers=headers)
+                                                 IgnoreFingerprintRecord.ACKNOWLEDGE)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on acknowledge')
         return action_failed('acknowledgement failed for some reason')
@@ -233,10 +227,8 @@ def falsepositive():
     """
     try:
         fingerprint = get_and_check_fingerprint()
-        headers = get_and_check_headers()
         get_db().handle_ignore_event_fingerprint(fingerprint,
-                                                 IgnoreFingerprintRecord.FALSE_POSITIVE,
-                                                 headers=headers)
+                                                 IgnoreFingerprintRecord.FALSE_POSITIVE)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on falsepositive')
         return action_failed('Reporting as false positive failed.')
@@ -252,11 +244,9 @@ def escalate():
     """
     try:
         fingerprint = get_and_check_fingerprint()
-        headers = get_and_check_headers()
         # indication that the user addressed the alert and escalate.
         get_db().handle_ignore_event_fingerprint(fingerprint,
-                                                 IgnoreFingerprintRecord.ESCALATE_MANUALLY,
-                                                 headers=headers)
+                                                 IgnoreFingerprintRecord.ESCALATE_MANUALLY)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on escalate real time alert')
         return action_failed('Escalation failed for some reason')
