@@ -40,6 +40,34 @@ def client():  # pylint: disable=missing-param-doc,missing-type-doc
     def test_hydrate(issues):
         return [{'fingerprint': x.fingerprint} for x in issues]
 
+    @api.register_request_hydrator()
+    def request_hydrator(request):
+        return dict(request.headers)
+
+    app = api.create_app()
+    with app.app_context():
+        yield app.test_client()
+
+
+@pytest.fixture
+def client_without_request_hydrator():  # pylint: disable=missing-param-doc,missing-type-doc
+    """Create a Flask test client fixture
+
+    Yields:
+        flask.testing.FlaskClient: a Flask testing client
+    """
+    api = CometApi(hmac_secret='secret')
+
+    @api.register_auth()
+    def override():
+        if g.test_authorized_for:
+            return g.test_authorized_for
+        return []
+
+    @api.register_hydrator()
+    def test_hydrate(issues):
+        return [{'fingerprint': x.fingerprint} for x in issues]
+
     app = api.create_app()
     with app.app_context():
         yield app.test_client()
@@ -246,3 +274,28 @@ def test_escalate_error_post(client):
     res = client.post('/v0/escalate',
                       json={'fingerprint': 'splunk_4025ad30<script>'})
     assert '500 INTERNAL SERVER ERROR' in res.status
+
+
+def test_endpoint_post_request_hudrator(client):
+    g.test_authorized_for = []
+    res = client.post('/v0/acknowledge', json=post_json_data,
+                      headers={"slack_channel": "channel"})
+    assert '{"msg":"Thanks for acknowledging!","status":"ok"}' \
+           in res.data.decode('utf-8')
+
+
+def test_endpoint_get_request_hudrator(client):
+    g.test_authorized_for = []
+    res = client.get('/v0/acknowledge' + get_request_args)
+    assert 'Thanks for acknowledging!' in res.data.decode('utf-8')
+
+
+def test_endpoint_post_no_request_hudrator(client_without_request_hydrator):
+    """test that even if comet api doesn't have request hydrator
+    the response doesn't change"""
+    g.test_authorized_for = []
+    res = client_without_request_hydrator.post('/v0/acknowledge',
+                                               json=post_json_data,
+                                               headers={"slack_channel": "channel"})
+    assert '{"msg":"Thanks for acknowledging!","status":"ok"}' \
+           in res.data.decode('utf-8')

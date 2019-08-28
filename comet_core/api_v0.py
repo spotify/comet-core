@@ -22,7 +22,8 @@ from datetime import timedelta, datetime
 
 from flask import Blueprint, g, jsonify, request, render_template_string
 
-from comet_core.api_helper import hydrate_open_issues, get_db, requires_auth, assert_valid_token
+from comet_core.api_helper import hydrate_open_issues, get_db, requires_auth, \
+    assert_valid_token, hydrate_with_request_headers
 from comet_core.model import IgnoreFingerprintRecord
 
 bp = Blueprint('v0', __name__, url_prefix='/v0')  # pylint: disable=invalid-name
@@ -143,8 +144,10 @@ def acceptrisk():
     """
     try:
         fingerprint = get_and_check_fingerprint()
+        record_metadata = hydrate_with_request_headers(request)
         get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ACCEPT_RISK)
+                                          IgnoreFingerprintRecord.ACCEPT_RISK,
+                                          metadata=record_metadata)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on acceptrisk')
         return action_failed('acceptrisk failed')
@@ -161,9 +164,11 @@ def snooze():
     try:
         fingerprint = get_and_check_fingerprint()
         expires_at = datetime.utcnow() + timedelta(days=30)
+        record_metadata = hydrate_with_request_headers(request)
         get_db().ignore_event_fingerprint(fingerprint,
                                           IgnoreFingerprintRecord.SNOOZE,
-                                          expires_at=expires_at)
+                                          expires_at=expires_at,
+                                          metadata=record_metadata)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on snooze')
         return action_failed('snooze failed')
@@ -179,8 +184,10 @@ def acknowledge():
     """
     try:
         fingerprint = get_and_check_fingerprint()
+        record_metadata = hydrate_with_request_headers(request)
         get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ACKNOWLEDGE)
+                                          IgnoreFingerprintRecord.ACKNOWLEDGE,
+                                          metadata=record_metadata)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on acknowledge')
         return action_failed('acknowledgement failed for some reason')
@@ -196,8 +203,10 @@ def falsepositive():
     """
     try:
         fingerprint = get_and_check_fingerprint()
+        record_metadata = hydrate_with_request_headers(request)
         get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.FALSE_POSITIVE)
+                                          IgnoreFingerprintRecord.FALSE_POSITIVE,
+                                          metadata=record_metadata)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on falsepositive')
         return action_failed('Reporting as false positive failed.')
@@ -213,9 +222,11 @@ def escalate():
     """
     try:
         fingerprint = get_and_check_fingerprint()
+        record_metadata = hydrate_with_request_headers(request)
         # indication that the user addressed the alert and escalate.
         get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ESCALATE_MANUALLY)
+                                          IgnoreFingerprintRecord.ESCALATE_MANUALLY,
+                                          metadata=record_metadata)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception('Got exception on escalate real time alert')
         return action_failed('Escalation failed for some reason')
