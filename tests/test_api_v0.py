@@ -276,7 +276,7 @@ def test_escalate_error_post(client):
     assert '500 INTERNAL SERVER ERROR' in res.status
 
 
-def test_endpoint_post_request_hudrator(client):
+def test_endpoint_post_request_hydrator(client):
     g.test_authorized_for = []
     res = client.post('/v0/acknowledge', json=post_json_data,
                       headers={"slack_channel": "channel"})
@@ -284,13 +284,13 @@ def test_endpoint_post_request_hudrator(client):
            in res.data.decode('utf-8')
 
 
-def test_endpoint_get_request_hudrator(client):
+def test_endpoint_get_request_hydrator(client):
     g.test_authorized_for = []
     res = client.get('/v0/acknowledge' + get_request_args)
     assert 'Thanks for acknowledging!' in res.data.decode('utf-8')
 
 
-def test_endpoint_post_no_request_hudrator(client_without_request_hydrator):
+def test_endpoint_post_no_request_hydrator(client_without_request_hydrator):
     """test that even if comet api doesn't have request hydrator
     the response doesn't change"""
     g.test_authorized_for = []

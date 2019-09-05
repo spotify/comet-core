@@ -545,11 +545,11 @@ def test_get_real_time_events_need_escalation(ds_with_real_time_events,
 
 def test_ignore_event_fingerprint_with_metadata(ds_instance):
     fingerprint = 'f1'
-    metadata = {'slack_channel': 'channel'}
+    record_metadata = {'slack_channel': 'channel'}
     ds_instance.ignore_event_fingerprint(fingerprint,
                                          ignore_type=IgnoreFingerprintRecord.ESCALATE_MANUALLY,
-                                         metadata=metadata)
+                                         record_metadata=record_metadata)
     result = ds_instance.session.query(IgnoreFingerprintRecord). \
             filter(IgnoreFingerprintRecord.fingerprint == fingerprint). \
             one_or_none()
-    assert result.record_metadata == metadata
+    assert result.record_metadata == record_metadata
