@@ -126,10 +126,11 @@ def test_get_issues_no_hydrator():
 
 
 def test_acceptrisk(client):
-    """Test the accesprtrisk POST endpoint is working"""
+    """Test the accesprtrisk POST endpoint is fails if
+    fingerprint/token empty or not passed"""
     g.test_authorized_for = []
-    res = client.post('/v0/acceptrisk', json={'fingerprint': ''})
-    assert res.json
+    res = client.post('/v0/acceptrisk', json={'fingerprint': '', 'token': ''})
+    assert res.json.get('message') == 'acceptrisk failed'
     res = client.post('/v0/acceptrisk', json={})
     assert res.json.get('status') == 'error'
 
@@ -137,8 +138,10 @@ def test_acceptrisk(client):
 def test_snooze(client):
     """Test the snooze POST endpoint is working"""
     g.test_authorized_for = []
-    res = client.post('/v0/snooze', json={'fingerprint': ''})
-    assert res.json
+    res = client.post('/v0/snooze',
+                      json={'fingerprint': 'forseti_f0743042e3bbea4a1b163f5accd4c366',
+                            'token': '7ec8a1ee4308d2d07f71fd5a1c844582cfcca56e915c06fc9518ad5e22c5e718'})
+    assert res.json.get('status') != 'error'
 
 
 def test_snooze_error(bad_client):
@@ -152,7 +155,8 @@ def test_snooze_error(bad_client):
 get_request_args = \
     '?fp=forseti_f0743042e3bbea4a1b163f5accd4c366' \
     '&t=7ec8a1ee4308d2d07f71fd5a1c844582cfcca56e915c06fc9518ad5e22c5e718'
-post_json_data = {'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'}
+post_json_data = {'fingerprint': 'forseti_f0743042e3bbea4a1b163f5accd4c366',
+                  'token': '7ec8a1ee4308d2d07f71fd5a1c844582cfcca56e915c06fc9518ad5e22c5e718'}
 
 
 def test_falsepositive(client):

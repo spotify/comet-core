@@ -116,9 +116,15 @@ def get_and_check_fingerprint():
             raise ValueError('No json data in post request.')
         if 'fingerprint' not in request_json:
             raise ValueError('No fingerprint parameter in json data.')
+        if 'token' not in request_json:
+            raise ValueError('No token parameter in json data.')
+
         fingerprint = request_json['fingerprint']
+        token = request_json['token']
 
         assert_fingerprint_syntax(fingerprint)
+
+        assert_valid_token(fingerprint, token)
 
     if request.method == 'GET':
         if 'fp' not in request.args:
