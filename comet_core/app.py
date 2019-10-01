@@ -558,7 +558,7 @@ class Comet:
                 })
 
             if not did_escalate:
-                LOG.warning('event-not-esclated', extra={
+                LOG.warning('event-not-escalated', extra={
                     'events': len(needs_escalation_events),
                     'source_type': source_type
                 })

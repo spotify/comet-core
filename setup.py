@@ -17,7 +17,7 @@ import setuptools
 
 setuptools.setup(
     name="comet-core",
-    version="2.0.2",
+    version="2.0.3",
     url="https://github.com/spotify/comet-core",
 
     author="Spotify Platform Security",
