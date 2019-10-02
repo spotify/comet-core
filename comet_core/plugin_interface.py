@@ -27,3 +27,7 @@ class CometInput:
 
     def stop(self):
         """Optional function called when Comet is shut down to gracefully shutdown plugins"""
+
+        
+        
+        
