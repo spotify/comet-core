@@ -136,6 +136,7 @@ class IgnoreFingerprintRecord(BaseRecord):
     ignore_type = Column(String(50))
     reported_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, default=None)
+    record_metadata = Column(JSONType())
 
     SNOOZE = 'snooze'
     ACCEPT_RISK = 'acceptrisk'
