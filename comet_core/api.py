@@ -24,7 +24,7 @@ from comet_core import api_v0
 LOG = logging.getLogger(__name__)
 
 
-class CometApi():
+class CometApi():  # pylint: disable=too-many-instance-attributes
     """The Comet API
 
     Args:
@@ -47,6 +47,7 @@ class CometApi():
         self.port = port
         self.auth_func = None
         self.hydrator_func = None
+        self.request_hydrator_func = None
         self.hmac_secret = hmac_secret
 
     def register_auth(self):
@@ -77,6 +78,20 @@ class CometApi():
 
         return decorator
 
+    def register_request_hydrator(self):
+        """Used as a decorator to register an hydrator function
+
+        Returns:
+            function: the original function
+        """
+
+        # pylint: disable=missing-return-doc, missing-return-type-doc
+        def decorator(func):
+            self.request_hydrator_func = func
+            return func
+
+        return decorator
+
     def create_app(self):
         """Create a Flask app from the configured instance
 
@@ -87,6 +102,7 @@ class CometApi():
 
         app.config['auth_func'] = self.auth_func
         app.config['hydrator_func'] = self.hydrator_func
+        app.config['request_hydrator_func'] = self.request_hydrator_func
         app.config['database_uri'] = self.database_uri
         app.config['hmac_secret'] = self.hmac_secret
 

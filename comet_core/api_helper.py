@@ -73,6 +73,19 @@ def requires_auth(f):
     return decorated
 
 
+def hydrate_with_request_headers(request):
+    """
+    Call the request hydrator function, if one is registered to the API.
+    Args:
+        request (Request): the request to hydrate with it's headers.
+    """
+    request_hydrator_func = current_app.config.get('request_hydrator_func')
+    if request_hydrator_func:
+        return request_hydrator_func(request)
+    LOG.warning('No API request hydrator registered!')
+    return None
+
+
 def assert_valid_token(fingerprint, token):
     """
     Check if the token given in the request is valid by comparing to the calculated API token.

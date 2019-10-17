@@ -13,10 +13,13 @@
 # limitations under the License.
 
 """Tests for api_helper"""
+from unittest import mock
+
 import pytest
 
 from comet_core.api import CometApi
-from comet_core.api_helper import get_db, hydrate_open_issues, assert_valid_token
+from comet_core.api_helper import get_db, hydrate_open_issues, \
+    assert_valid_token, hydrate_with_request_headers
 from comet_core.fingerprint import fingerprint_hmac
 
 
@@ -25,6 +28,18 @@ def app_context():
     api = CometApi()
     app = api.create_app()
 
+    yield app.app_context()
+
+
+@pytest.fixture
+def app_context_with_request_hydrator():
+    api = CometApi()
+
+    @api.register_request_hydrator()
+    def request_hydrator(request):
+        return request
+
+    app = api.create_app()
     yield app.app_context()
 
 
@@ -37,6 +52,19 @@ def test_no_hydrator():
     api = CometApi()
     with api.create_app().app_context():
         assert not hydrate_open_issues([])
+
+
+def test_no_request_hydrator():
+    api = CometApi()
+    request_mock = mock.Mock()
+    with api.create_app().app_context():
+        assert not hydrate_with_request_headers(request_mock)
+
+
+def test_request_hydrator(app_context_with_request_hydrator):
+    request_mock = mock.Mock()
+    with app_context_with_request_hydrator:
+        assert hydrate_with_request_headers(request_mock) == request_mock
 
 
 def test_assert_valid_token():

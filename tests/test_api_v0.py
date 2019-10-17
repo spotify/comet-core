@@ -40,6 +40,34 @@ def client():  # pylint: disable=missing-param-doc,missing-type-doc
     def test_hydrate(issues):
         return [{'fingerprint': x.fingerprint} for x in issues]
 
+    @api.register_request_hydrator()
+    def request_hydrator(request):
+        return dict(request.headers)
+
+    app = api.create_app()
+    with app.app_context():
+        yield app.test_client()
+
+
+@pytest.fixture
+def client_without_request_hydrator():  # pylint: disable=missing-param-doc,missing-type-doc
+    """Create a Flask test client fixture
+
+    Yields:
+        flask.testing.FlaskClient: a Flask testing client
+    """
+    api = CometApi(hmac_secret='secret')
+
+    @api.register_auth()
+    def override():
+        if g.test_authorized_for:
+            return g.test_authorized_for
+        return []
+
+    @api.register_hydrator()
+    def test_hydrate(issues):
+        return [{'fingerprint': x.fingerprint} for x in issues]
+
     app = api.create_app()
     with app.app_context():
         yield app.test_client()
@@ -98,10 +126,11 @@ def test_get_issues_no_hydrator():
 
 
 def test_acceptrisk(client):
-    """Test the accesprtrisk POST endpoint is working"""
+    """Test the accesprtrisk POST endpoint is fails if
+    fingerprint/token empty or not passed"""
     g.test_authorized_for = []
-    res = client.post('/v0/acceptrisk', json={'fingerprint': ''})
-    assert res.json
+    res = client.post('/v0/acceptrisk', json={'fingerprint': '', 'token': ''})
+    assert res.json.get('message') == 'acceptrisk failed'
     res = client.post('/v0/acceptrisk', json={})
     assert res.json.get('status') == 'error'
 
@@ -109,8 +138,10 @@ def test_acceptrisk(client):
 def test_snooze(client):
     """Test the snooze POST endpoint is working"""
     g.test_authorized_for = []
-    res = client.post('/v0/snooze', json={'fingerprint': ''})
-    assert res.json
+    res = client.post('/v0/snooze',
+                      json={'fingerprint': 'forseti_f0743042e3bbea4a1b163f5accd4c366',
+                            'token': '7ec8a1ee4308d2d07f71fd5a1c844582cfcca56e915c06fc9518ad5e22c5e718'})
+    assert res.json.get('status') != 'error'
 
 
 def test_snooze_error(bad_client):
@@ -124,7 +155,8 @@ def test_snooze_error(bad_client):
 get_request_args = \
     '?fp=forseti_f0743042e3bbea4a1b163f5accd4c366' \
     '&t=7ec8a1ee4308d2d07f71fd5a1c844582cfcca56e915c06fc9518ad5e22c5e718'
-post_json_data = {'fingerprint': 'splunk_4025ad523c2a94e5a13b1c8aef8c5730'}
+post_json_data = {'fingerprint': 'forseti_f0743042e3bbea4a1b163f5accd4c366',
+                  'token': '7ec8a1ee4308d2d07f71fd5a1c844582cfcca56e915c06fc9518ad5e22c5e718'}
 
 
 def test_falsepositive(client):
@@ -246,3 +278,28 @@ def test_escalate_error_post(client):
     res = client.post('/v0/escalate',
                       json={'fingerprint': 'splunk_4025ad30<script>'})
     assert '500 INTERNAL SERVER ERROR' in res.status
+
+
+def test_endpoint_post_request_hydrator(client):
+    g.test_authorized_for = []
+    res = client.post('/v0/acknowledge', json=post_json_data,
+                      headers={"slack_channel": "channel"})
+    assert '{"msg":"Thanks for acknowledging!","status":"ok"}' \
+           in res.data.decode('utf-8')
+
+
+def test_endpoint_get_request_hydrator(client):
+    g.test_authorized_for = []
+    res = client.get('/v0/acknowledge' + get_request_args)
+    assert 'Thanks for acknowledging!' in res.data.decode('utf-8')
+
+
+def test_endpoint_post_no_request_hydrator(client_without_request_hydrator):
+    """test that even if comet api doesn't have request hydrator
+    the response doesn't change"""
+    g.test_authorized_for = []
+    res = client_without_request_hydrator.post('/v0/acknowledge',
+                                               json=post_json_data,
+                                               headers={"slack_channel": "channel"})
+    assert '{"msg":"Thanks for acknowledging!","status":"ok"}' \
+           in res.data.decode('utf-8')
