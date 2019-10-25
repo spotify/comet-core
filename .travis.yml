@@ -12,16 +12,18 @@ install:
 # select tox envs to run
 matrix:
   include:
-  - python: '3.6'
-    env: TOXENV=py36
-  - python: '3.6'
-    env: TOXENV=lint
+  - python: 3.6
+    env: TOXENV=py36,black,lint
+  - python: 3.7
+    env: TOXENV=py37
+  - python: 3.8
+    env: TOXENV=py38
 
 # run tox
 script:
 - tox
 
-# deploy 
+# deploy
 deploy:
   provider: pypi
   user: spotifysecurity
