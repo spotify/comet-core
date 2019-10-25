@@ -18,8 +18,7 @@ from unittest import mock
 import pytest
 
 from comet_core.api import CometApi
-from comet_core.api_helper import get_db, hydrate_open_issues, \
-    assert_valid_token, hydrate_with_request_headers
+from comet_core.api_helper import get_db, hydrate_open_issues, assert_valid_token, hydrate_with_request_headers
 from comet_core.fingerprint import fingerprint_hmac
 
 
@@ -68,8 +67,8 @@ def test_request_hydrator(app_context_with_request_hydrator):
 
 
 def test_assert_valid_token():
-    fp = 'test_fingerprint'
-    test_hmac_secret = 'secret'
+    fp = "test_fingerprint"
+    test_hmac_secret = "secret"
     token = fingerprint_hmac(fp, test_hmac_secret)
     api = CometApi(hmac_secret=test_hmac_secret)
     with api.create_app().app_context():

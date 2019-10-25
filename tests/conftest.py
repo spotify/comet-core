@@ -34,7 +34,7 @@ def test_db():
     from comet_core.data_store import DataStore
     from tests.utils import get_all_test_messages
 
-    data_store = DataStore('sqlite://')
+    data_store = DataStore("sqlite://")
     for event in get_all_test_messages(parsed=True):
         data_store.add_record(event.get_record())
     yield data_store

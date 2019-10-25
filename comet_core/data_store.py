@@ -62,6 +62,7 @@ class DataStore:
     Args:
         database_uri (str): the database to use
     """
+
     def __init__(self, database_uri):
         self.engine = create_engine(database_uri)
         self.connection = self.engine.connect()
@@ -103,9 +104,12 @@ class DataStore:
         """
 
         # https://explainextended.com/2009/09/18/not-in-vs-not-exists-vs-left-join-is-null-mysql/
-        events = self.session.query(EventRecord). \
-            filter((EventRecord.processed_at.is_(None)) & (EventRecord.source_type == source_type)). \
-            order_by(EventRecord.received_at.asc()).all()
+        events = (
+            self.session.query(EventRecord)
+            .filter((EventRecord.processed_at.is_(None)) & (EventRecord.source_type == source_type))
+            .order_by(EventRecord.received_at.asc())
+            .all()
+        )
 
         now = datetime.utcnow()
 
@@ -129,14 +133,17 @@ class DataStore:
             list: list of `EventRecord`s not addressed,
             or empty list if there is nothing to return
         """
-        non_addressed_events = self.session.query(EventRecord). \
-            filter((EventRecord.sent_at.isnot(None)) &
-                   (EventRecord.escalated_at.is_(None)) &
-                   (EventRecord.source_type == source_type)). \
-            outerjoin(IgnoreFingerprintRecord,
-                      EventRecord.fingerprint ==
-                      IgnoreFingerprintRecord.fingerprint). \
-            filter(IgnoreFingerprintRecord.fingerprint.is_(None)).all()
+        non_addressed_events = (
+            self.session.query(EventRecord)
+            .filter(
+                (EventRecord.sent_at.isnot(None))
+                & (EventRecord.escalated_at.is_(None))
+                & (EventRecord.source_type == source_type)
+            )
+            .outerjoin(IgnoreFingerprintRecord, EventRecord.fingerprint == IgnoreFingerprintRecord.fingerprint)
+            .filter(IgnoreFingerprintRecord.fingerprint.is_(None))
+            .all()
+        )
 
         return non_addressed_events
 
@@ -152,9 +159,12 @@ class DataStore:
             bool: True if any of the provided records represents an issue that needs to be reminded about
         """
         fingerprints = [record.fingerprint for record in records]
-        timestamps = self.session.query(func.max(EventRecord.sent_at)). \
-            filter(EventRecord.fingerprint.in_(fingerprints) & EventRecord.sent_at.isnot(None)). \
-            group_by(EventRecord.fingerprint).all()
+        timestamps = (
+            self.session.query(func.max(EventRecord.sent_at))
+            .filter(EventRecord.fingerprint.in_(fingerprints) & EventRecord.sent_at.isnot(None))
+            .group_by(EventRecord.fingerprint)
+            .all()
+        )
         if timestamps:
             return max(timestamps)[0] <= datetime.utcnow() - search_timedelta
         return False
@@ -167,7 +177,7 @@ class DataStore:
             column_name (str): the name of the datebase column to update
         """
         time_now = datetime.utcnow()
-        updates = [{'id': r.id, column_name: time_now} for r in records]
+        updates = [{"id": r.id, column_name: time_now} for r in records]
 
         self.session.bulk_update_mappings(EventRecord, updates)
 
@@ -177,7 +187,7 @@ class DataStore:
         Args:
             records (list): `EventRecord`s to update the processed for
         """
-        self.update_timestamp_column_to_now(records, 'processed_at')
+        self.update_timestamp_column_to_now(records, "processed_at")
 
     def update_sent_at_timestamp_to_now(self, records):
         """Update the sent_at timestamp for the given records to now.
@@ -185,14 +195,14 @@ class DataStore:
         Args:
             records (list): `EventRecord`s to update the sent_at for
         """
-        self.update_timestamp_column_to_now(records, 'sent_at')
+        self.update_timestamp_column_to_now(records, "sent_at")
 
     def update_event_escalated_at_to_now(self, records):  # pylint: disable=invalid-name
         """Update the escalated_at timestamp for the given records to now.
         Args:
             records (list): `EventRecord`s to update
         """
-        self.update_timestamp_column_to_now(records, 'escalated_at')
+        self.update_timestamp_column_to_now(records, "escalated_at")
 
     def get_oldest_event_with_fingerprint(self, fingerprint):  # pylint: disable=invalid-name
         """
@@ -203,11 +213,13 @@ class DataStore:
         Returns:
             EventRecord: oldest EventRecord with the given fingerprint
         """
-        return self.session.query(EventRecord). \
-            filter(EventRecord.fingerprint == fingerprint). \
-            order_by(EventRecord.received_at.asc()). \
-            limit(1). \
-            one_or_none()
+        return (
+            self.session.query(EventRecord)
+            .filter(EventRecord.fingerprint == fingerprint)
+            .order_by(EventRecord.received_at.asc())
+            .limit(1)
+            .one_or_none()
+        )
 
     def get_latest_event_with_fingerprint(self, fingerprint):  # pylint: disable=invalid-name
         """
@@ -218,11 +230,13 @@ class DataStore:
         Returns:
             EventRecord: latest EventRecord with the given fingerprint
         """
-        return self.session.query(EventRecord). \
-            filter(EventRecord.fingerprint == fingerprint). \
-            order_by(EventRecord.received_at.desc()). \
-            limit(1). \
-            one_or_none()
+        return (
+            self.session.query(EventRecord)
+            .filter(EventRecord.fingerprint == fingerprint)
+            .order_by(EventRecord.received_at.desc())
+            .limit(1)
+            .one_or_none()
+        )
 
     def check_needs_escalation(self, escalation_time, event):
         """Checks if the event needs to be escalated. Returns True if the first occurrence of an event with the same
@@ -248,8 +262,9 @@ class DataStore:
             expires_at (datetime.datetime): specify the time of the ignore expiration
             record_metadata (dict): metadata to hydrate the record with.
         """
-        new_record = IgnoreFingerprintRecord(fingerprint=fingerprint, ignore_type=ignore_type,
-                                             expires_at=expires_at, record_metadata=record_metadata)
+        new_record = IgnoreFingerprintRecord(
+            fingerprint=fingerprint, ignore_type=ignore_type, expires_at=expires_at, record_metadata=record_metadata
+        )
         self.session.begin()
         self.session.add(new_record)
         self.session.commit()
@@ -261,11 +276,16 @@ class DataStore:
         Returns:
             bool: True if whitelisted
         """
-        return self.session.query(IgnoreFingerprintRecord). \
-            filter(IgnoreFingerprintRecord.fingerprint == fingerprint). \
-            filter((IgnoreFingerprintRecord.expires_at > datetime.utcnow()) |
-                   (IgnoreFingerprintRecord.expires_at.is_(None))). \
-            count() >= 1
+        return (
+            self.session.query(IgnoreFingerprintRecord)
+            .filter(IgnoreFingerprintRecord.fingerprint == fingerprint)
+            .filter(
+                (IgnoreFingerprintRecord.expires_at > datetime.utcnow())
+                | (IgnoreFingerprintRecord.expires_at.is_(None))
+            )
+            .count()
+            >= 1
+        )
 
     def may_send_escalation(self, source_type, escalation_reminder_cadence):
         """Check if we are allowed to send another esclation notification to the source_type escalation recipient.
@@ -278,10 +298,13 @@ class DataStore:
         Returns:
             bool: True if an escalation may be sent, False otherwise
         """
-        last_escalated = self.session.query(EventRecord.escalated_at). \
-            filter(EventRecord.source_type == source_type). \
-            order_by(EventRecord.escalated_at.desc()). \
-            limit(1).one_or_none()
+        last_escalated = (
+            self.session.query(EventRecord.escalated_at)
+            .filter(EventRecord.source_type == source_type)
+            .order_by(EventRecord.escalated_at.desc())
+            .limit(1)
+            .one_or_none()
+        )
 
         if not last_escalated[0]:
             return True
@@ -298,10 +321,13 @@ class DataStore:
         Returns:
             bool: True if any previous event with the same fingerprint was escalated, False otherwise
         """
-        return self.session.query(EventRecord). \
-            filter(EventRecord.fingerprint == event.fingerprint). \
-            filter(EventRecord.escalated_at.isnot(None)). \
-            count() >= 1
+        return (
+            self.session.query(EventRecord)
+            .filter(EventRecord.fingerprint == event.fingerprint)
+            .filter(EventRecord.escalated_at.isnot(None))
+            .count()
+            >= 1
+        )
 
     def get_open_issues(self, owners):
         """Return a list of open (newer than 24h), not whitelisted or snoozed issues for the given owners.
@@ -310,19 +336,26 @@ class DataStore:
         Returns:
             list: list of EventRecord, representing open, non-ignored issues for the given owners
         """
-        open_issues = self.session.query(EventRecord). \
-            filter(EventRecord.owner.in_(owners)). \
-            filter(EventRecord.received_at >= datetime.utcnow() - timedelta(days=1)). \
-            all()
+        open_issues = (
+            self.session.query(EventRecord)
+            .filter(EventRecord.owner.in_(owners))
+            .filter(EventRecord.received_at >= datetime.utcnow() - timedelta(days=1))
+            .all()
+        )
 
         open_issues = remove_duplicate_events(open_issues)
 
         open_issues_fps = [issue.fingerprint for issue in open_issues]
 
-        ignored_issues_fps_tuples = self.session.query(IgnoreFingerprintRecord.fingerprint). \
-            filter(IgnoreFingerprintRecord.fingerprint.in_(open_issues_fps)). \
-            filter((IgnoreFingerprintRecord.expires_at > datetime.utcnow()) |
-                   (IgnoreFingerprintRecord.expires_at.is_(None))).all()
+        ignored_issues_fps_tuples = (
+            self.session.query(IgnoreFingerprintRecord.fingerprint)
+            .filter(IgnoreFingerprintRecord.fingerprint.in_(open_issues_fps))
+            .filter(
+                (IgnoreFingerprintRecord.expires_at > datetime.utcnow())
+                | (IgnoreFingerprintRecord.expires_at.is_(None))
+            )
+            .all()
+        )
 
         ignored_issues_fps = [t[0] for t in ignored_issues_fps_tuples]
 
@@ -343,11 +376,14 @@ class DataStore:
             bool: True if the issue is new, False if it is old.
         """
 
-        most_recent_processed = self.session.query(EventRecord.received_at). \
-            filter(EventRecord.fingerprint == fingerprint). \
-            filter(EventRecord.processed_at.isnot(None)). \
-            order_by(EventRecord.received_at.desc()). \
-            limit(1).one_or_none()
+        most_recent_processed = (
+            self.session.query(EventRecord.received_at)
+            .filter(EventRecord.fingerprint == fingerprint)
+            .filter(EventRecord.processed_at.isnot(None))
+            .order_by(EventRecord.received_at.desc())
+            .limit(1)
+            .one_or_none()
+        )
 
         if not most_recent_processed:
             return True
@@ -363,13 +399,15 @@ class DataStore:
         Returns:
             list: list of `EventRecord`s to escalate.
         """
-        events_to_escalate = self.session.query(EventRecord). \
-            filter((EventRecord.sent_at.isnot(None)) &
-                   (EventRecord.escalated_at.is_(None)) &
-                   (EventRecord.source_type == source_type)). \
-            outerjoin(IgnoreFingerprintRecord,
-                      EventRecord.fingerprint ==
-                      IgnoreFingerprintRecord.fingerprint). \
-            filter(IgnoreFingerprintRecord.ignore_type ==
-                   IgnoreFingerprintRecord.ESCALATE_MANUALLY).all()
+        events_to_escalate = (
+            self.session.query(EventRecord)
+            .filter(
+                (EventRecord.sent_at.isnot(None))
+                & (EventRecord.escalated_at.is_(None))
+                & (EventRecord.source_type == source_type)
+            )
+            .outerjoin(IgnoreFingerprintRecord, EventRecord.fingerprint == IgnoreFingerprintRecord.fingerprint)
+            .filter(IgnoreFingerprintRecord.ignore_type == IgnoreFingerprintRecord.ESCALATE_MANUALLY)
+            .all()
+        )
         return events_to_escalate

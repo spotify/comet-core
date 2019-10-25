@@ -36,8 +36,7 @@ class EventContainer:
         self.source_type = source_type
         self.message = message
         self.owner = None
-        self.fingerprint = comet_event_fingerprint(data_dict=message,
-                                                   prefix=source_type + '_')
+        self.fingerprint = comet_event_fingerprint(data_dict=message, prefix=source_type + "_")
         self.event_metadata = dict()
 
     def get_record(self):
@@ -46,10 +45,13 @@ class EventContainer:
         Returns:
             EventRecord: the database record for this event
         """
-        return EventRecord(source_type=self.source_type,
-                           fingerprint=self.fingerprint, owner=self.owner,
-                           event_metadata=self.event_metadata,
-                           data=self.message)
+        return EventRecord(
+            source_type=self.source_type,
+            fingerprint=self.fingerprint,
+            owner=self.owner,
+            event_metadata=self.event_metadata,
+            data=self.message,
+        )
 
     def set_owner(self, owner):
         """Set the owner of the event.
@@ -95,12 +97,10 @@ class SourceTypeFunction:
         """
         if source_types:
             if isinstance(source_types, str):
-                self.specific_collection.setdefault(source_types, []).append(
-                    func)
+                self.specific_collection.setdefault(source_types, []).append(func)
             elif isinstance(source_types, list):
                 for source_type in source_types:
-                    self.specific_collection.setdefault(source_type, []).append(
-                        func)
+                    self.specific_collection.setdefault(source_type, []).append(func)
         else:
             self.global_collection.append(func)
 
@@ -137,7 +137,7 @@ class Comet:
         database_uri (str): the database to connect to as an URI
     """
 
-    def __init__(self, database_uri='sqlite://'):
+    def __init__(self, database_uri="sqlite://"):
         self.running = False
         self.data_store = DataStore(database_uri)
 
@@ -153,12 +153,12 @@ class Comet:
 
         self.database_uri = database_uri
         self.batch_config = {
-            'wait_for_more': timedelta(seconds=3),
-            'max_wait': timedelta(seconds=4),
-            'new_threshold': timedelta(days=7),
-            'owner_reminder_cadence': timedelta(days=7),
-            'escalation_time': timedelta(seconds=10),
-            'escalation_reminder_cadence': timedelta(days=7)
+            "wait_for_more": timedelta(seconds=3),
+            "max_wait": timedelta(seconds=4),
+            "new_threshold": timedelta(days=7),
+            "owner_reminder_cadence": timedelta(days=7),
+            "escalation_time": timedelta(seconds=10),
+            "escalation_reminder_cadence": timedelta(days=7),
         }
         self.specific_configs = {}
 
@@ -171,16 +171,16 @@ class Comet:
         Return:
             boolean: True if parsing was successful, False otherwise
         """
-        LOG.info('received a message', extra={'source_type': source_type})
+        LOG.info("received a message", extra={"source_type": source_type})
         parse = self.parsers.get(source_type)
         if not parse:
-            LOG.warning('no parser found', extra={'source_type': source_type})
+            LOG.warning("no parser found", extra={"source_type": source_type})
             return False
 
         try:
             message_dict = parse(message)
         except ValueError as err:
-            LOG.warning('invalid message', extra={'source_type': source_type, 'error': str(err)})
+            LOG.warning("invalid message", extra={"source_type": source_type, "error": str(err)})
             return False
 
         # Prepare an event container
@@ -366,6 +366,7 @@ class Comet:
         """
         # pylint: disable=missing-return-doc, missing-return-type-doc
         if not func:
+
             def decorator(func):
                 self.escalators.add(source_types, func)
                 return func
@@ -393,7 +394,7 @@ class Comet:
             source_type_config['wait_for_more']:
             source_type_config['max_wait']:
         """
-        LOG.debug('Processing unprocessed events')
+        LOG.debug("Processing unprocessed events")
 
         # pylint: disable=consider-iterating-dictionary
         for source_type in self.parsers.keys():
@@ -402,9 +403,8 @@ class Comet:
                 source_type_config.update(self.specific_configs[source_type])
 
             batch_events = self.data_store.get_unprocessed_events_batch(
-                source_type_config['wait_for_more'],
-                source_type_config['max_wait'],
-                source_type)
+                source_type_config["wait_for_more"], source_type_config["max_wait"], source_type
+            )
 
             events_by_owner = {}
             ignored_events = []
@@ -416,17 +416,12 @@ class Comet:
                     if self.data_store.fingerprint_is_ignored(event.fingerprint):
                         ignored_events.append(event)
                     else:
-                        real_time_events_by_owner.setdefault(event.owner,
-                                                             []).append(event)
+                        real_time_events_by_owner.setdefault(event.owner, []).append(event)
                 # handle unprocessed real_time alerts
-                self._handle_real_time_alerts(real_time_events_by_owner,
-                                              source_type)
+                self._handle_real_time_alerts(real_time_events_by_owner, source_type)
                 # check if real time alerts need escalation
-                events_to_escalate = \
-                    self.data_store.get_events_need_escalation(
-                        source_type)
-                self._handle_events_need_escalation(source_type,
-                                                    events_to_escalate)
+                events_to_escalate = self.data_store.get_events_need_escalation(source_type)
+                self._handle_events_need_escalation(source_type, events_to_escalate)
 
             else:
                 # Group events by owner and mark them as new or seen before
@@ -434,22 +429,17 @@ class Comet:
                     if self.data_store.fingerprint_is_ignored(event.fingerprint):
                         ignored_events.append(event)
                     else:
-                        event.new = self.data_store.check_if_new(event.fingerprint,
-                                                                 source_type_config['new_threshold'])
+                        event.new = self.data_store.check_if_new(event.fingerprint, source_type_config["new_threshold"])
                         event.needs_escalation = False
-                        if self.data_store.check_needs_escalation(
-                                source_type_config['escalation_time'], event):
+                        if self.data_store.check_needs_escalation(source_type_config["escalation_time"], event):
                             event.needs_escalation = True
-                            event.first_escalation = not self.data_store.check_if_previously_escalated(
-                                event)
+                            event.first_escalation = not self.data_store.check_if_previously_escalated(event)
                             need_escalation_events.append(event)
                         events_by_owner.setdefault(event.owner, []).append(event)
 
             if ignored_events:
-                self.data_store.update_processed_at_timestamp_to_now(
-                    ignored_events)
-                LOG.info('events-ignored',
-                         extra={'events': len(ignored_events)})
+                self.data_store.update_processed_at_timestamp_to_now(ignored_events)
+                LOG.info("events-ignored", extra={"events": len(ignored_events)})
 
             # Determine if we should send an email to the system owner
             # This happens if there are events that..
@@ -457,27 +447,21 @@ class Comet:
             #  * ..was last sent to the owner X days ago
             # (where X is `owner_reminder_cadence`, default 7 days)
             for owner, events in events_by_owner.items():
-                owner_reminder_cadence = \
-                    source_type_config['owner_reminder_cadence']
-                if any([event.new for event in events]) \
-                        or self.data_store.\
-                        check_any_issue_needs_reminder(owner_reminder_cadence,
-                                                       events):
+                owner_reminder_cadence = source_type_config["owner_reminder_cadence"]
+                if any([event.new for event in events]) or self.data_store.check_any_issue_needs_reminder(
+                    owner_reminder_cadence, events
+                ):
                     self._route_events(owner, events, source_type)
 
                 self.data_store.update_processed_at_timestamp_to_now(events)
-                LOG.info('events-processed', extra={
-                    'events': len(events),
-                    'source-type': source_type,
-                    'owner': owner
-                })
+                LOG.info("events-processed", extra={"events": len(events), "source-type": source_type, "owner": owner})
 
             # Check if any of the events for this source_type needs
             # escalation and if we may send an escalation
-            if need_escalation_events and self.data_store. \
-                    may_send_escalation(source_type, source_type_config['escalation_reminder_cadence']):
-                self._handle_events_need_escalation(source_type,
-                                                    need_escalation_events)
+            if need_escalation_events and self.data_store.may_send_escalation(
+                source_type, source_type_config["escalation_reminder_cadence"]
+            ):
+                self._handle_events_need_escalation(source_type, need_escalation_events)
 
     def handle_non_addressed_events(self):
         """Check if there are real time events sent to a user that were not addressed.
@@ -494,15 +478,14 @@ class Comet:
                 if source_type in self.real_time_config_providers:
                     event_config = self.real_time_config_providers[source_type](event)
 
-                escalate_cadence = event_config.get('escalate_cadence', timedelta(hours=36))
+                escalate_cadence = event_config.get("escalate_cadence", timedelta(hours=36))
 
                 event_sent_at = event.sent_at
                 # when is earliest time to escalate the specific event
                 if event_sent_at <= datetime.utcnow() - escalate_cadence:
                     events_needs_escalation.append(event)
 
-            self._handle_events_need_escalation(source_type,
-                                                events_needs_escalation)
+            self._handle_events_need_escalation(source_type, events_needs_escalation)
 
     def _route_events(self, owner, events, source_type):
         """route events need routing by getting the route function
@@ -514,17 +497,13 @@ class Comet:
         """
         routers = list(self.routers.for_source_type(source_type))
         if not routers:
-            LOG.warning('no-router', extra={'source-type': source_type})
+            LOG.warning("no-router", extra={"source-type": source_type})
         for route_func in routers:
             route_func(source_type, owner, events)
 
         self.data_store.update_sent_at_timestamp_to_now(events)
 
-        LOG.info('event-notification-sent', extra={
-            'events': len(events),
-            'source-type': source_type,
-            'owner': owner
-        })
+        LOG.info("event-notification-sent", extra={"events": len(events), "source-type": source_type, "owner": owner})
 
     def _handle_real_time_alerts(self, real_time_events_by_owner, source_type):
         """Handle real time alerts by sending the alerts to the owner
@@ -538,8 +517,7 @@ class Comet:
                 self._route_events(owner, events, source_type)
                 self.data_store.update_processed_at_timestamp_to_now(events)
 
-    def _handle_events_need_escalation(self, source_type,
-                                       needs_escalation_events):
+    def _handle_events_need_escalation(self, source_type, needs_escalation_events):
         """Handle events need escalation by getting the escalate
            function from the source type and escalate.
         Args:
@@ -552,19 +530,14 @@ class Comet:
                 did_escalate = True
                 escalator_func(source_type, needs_escalation_events)
 
-                LOG.info('event-escalated', extra={
-                    'events': len(needs_escalation_events),
-                    'source_type': source_type
-                })
+                LOG.info("event-escalated", extra={"events": len(needs_escalation_events), "source_type": source_type})
 
             if not did_escalate:
-                LOG.warning('event-not-escalated', extra={
-                    'events': len(needs_escalation_events),
-                    'source_type': source_type
-                })
+                LOG.warning(
+                    "event-not-escalated", extra={"events": len(needs_escalation_events), "source_type": source_type}
+                )
 
-            self.data_store.update_event_escalated_at_to_now(
-                needs_escalation_events)
+            self.data_store.update_event_escalated_at_to_now(needs_escalation_events)
 
     # pylint: disable=unused-argument
     def stop(self, *args):
@@ -581,14 +554,12 @@ class Comet:
         """Validates that every parser has a router"""
         for source_type in list(self.parsers):
             if not list(self.routers.for_source_type(source_type)):
-                LOG.warning('no router found',
-                            extra={'source_type': source_type})
+                LOG.warning("no router found", extra={"source_type": source_type})
                 del self.parsers[source_type]
 
     def start_inputs(self):
         """Helper used to instantiate all registered inputs"""
-        self.instantiated_inputs = [clazz(self.message_callback, **kwargs)
-                                    for clazz, kwargs in self.inputs]
+        self.instantiated_inputs = [clazz(self.message_callback, **kwargs) for clazz, kwargs in self.inputs]
 
     def prepare_run(self):
         """Prepare the run for both normal running and staging"""

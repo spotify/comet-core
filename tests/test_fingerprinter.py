@@ -17,24 +17,13 @@
 from comet_core.fingerprint import comet_event_fingerprint
 
 
-ORIG_DICT = {
-    'a': 'b',
-    'b': 'c',
-    'res': {
-        'lel': 'wahat',
-        'gl': 'hf'
-    }
-}
+ORIG_DICT = {"a": "b", "b": "c", "res": {"lel": "wahat", "gl": "hf"}}
 
-ORIG_DICT_FP = '30c3e95d8fb3665ba70c6e3630a57d9a'
+ORIG_DICT_FP = "30c3e95d8fb3665ba70c6e3630a57d9a"
 
-BLACKLIST = [
-    'a',
-    ['res', 'gl'],
-    'lol'
-]
+BLACKLIST = ["a", ["res", "gl"], "lol"]
 
-AFTER_BLACKLIST_FP = 'a4e1f36de415f8ab64da9fd8d76c8bbc'
+AFTER_BLACKLIST_FP = "a4e1f36de415f8ab64da9fd8d76c8bbc"
 
 
 def test_event_fingerprint_no_blacklist():  # pylint: disable=invalid-name,missing-docstring
@@ -48,5 +37,5 @@ def test_event_fingerprint_blacklist():  # pylint: disable=invalid-name,missing-
 
 
 def test_event_fingerprint_blacklist_prefix():  # pylint: disable=invalid-name,missing-docstring
-    fingerprint = comet_event_fingerprint(ORIG_DICT, BLACKLIST, 'test')
+    fingerprint = comet_event_fingerprint(ORIG_DICT, BLACKLIST, "test")
     assert fingerprint != AFTER_BLACKLIST_FP

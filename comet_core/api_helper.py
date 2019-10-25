@@ -34,10 +34,10 @@ def hydrate_open_issues(raw_issues):
     Returns:
         str: json list, containing one json dictionary for each issue
     """
-    hydrator_func = current_app.config.get('hydrator_func')
+    hydrator_func = current_app.config.get("hydrator_func")
     if hydrator_func:
         return hydrator_func(raw_issues)
-    LOG.warning('No API hydrator registered!')
+    LOG.warning("No API hydrator registered!")
     return False
 
 
@@ -47,8 +47,8 @@ def get_db():
     Returns:
         DataStore: a request-scoped datastore instance
     """
-    if 'db' not in g:
-        g.db = DataStore(current_app.config.get('database_uri'))
+    if "db" not in g:
+        g.db = DataStore(current_app.config.get("database_uri"))
     return g.db
 
 
@@ -59,7 +59,7 @@ def requires_auth(f):
     @wraps(f)
     # pylint: disable=missing-return-doc,missing-return-type-doc
     def decorated(*args, **kwargs):
-        auth_func = current_app.config.get('auth_func')
+        auth_func = current_app.config.get("auth_func")
         g.authorized_for = []
         if auth_func:
             res = auth_func()
@@ -67,7 +67,7 @@ def requires_auth(f):
                 return res
             g.authorized_for = res
             return f(*args, **kwargs)
-        LOG.warning('no auth function specified')
+        LOG.warning("no auth function specified")
         return f(*args, **kwargs)
 
     return decorated
@@ -79,10 +79,10 @@ def hydrate_with_request_headers(request):
     Args:
         request (Request): the request to hydrate with it's headers.
     """
-    request_hydrator_func = current_app.config.get('request_hydrator_func')
+    request_hydrator_func = current_app.config.get("request_hydrator_func")
     if request_hydrator_func:
         return request_hydrator_func(request)
-    LOG.warning('No API request hydrator registered!')
+    LOG.warning("No API request hydrator registered!")
     return None
 
 
@@ -97,6 +97,6 @@ def assert_valid_token(fingerprint, token):
     Raises:
         ValueError: if the token is not valid
     """
-    expected_token = fingerprint_hmac(fingerprint, current_app.config['hmac_secret'])
-    if not hmac.compare_digest(bytes(expected_token, 'utf-8'), bytes(token, 'utf-8')):
-        raise ValueError('Invalid token for the given fingerprint.')
+    expected_token = fingerprint_hmac(fingerprint, current_app.config["hmac_secret"])
+    if not hmac.compare_digest(bytes(expected_token, "utf-8"), bytes(token, "utf-8")):
+        raise ValueError("Invalid token for the given fingerprint.")

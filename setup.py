@@ -19,30 +19,19 @@ setuptools.setup(
     name="comet-core",
     version="2.1.0",
     url="https://github.com/spotify/comet-core",
-
     author="Spotify Platform Security",
     author_email="wasabi@spotify.com",
-
     description="Comet Distributed Security Notification Framework",
-    long_description=open('README.md', 'r+', encoding='utf-8').read(),
-
-    packages=['comet_core'],
-
-    install_requires=[
-        'Flask~=1.0',
-        'Flask-Cors~=3.0',
-        'python-json-logger~=0.1',
-        'SQLAlchemy~=1.3'
-    ],
-
+    long_description=open("README.md", "r+", encoding="utf-8").read(),
+    packages=["comet_core"],
+    install_requires=["Flask~=1.0", "Flask-Cors~=3.0", "python-json-logger~=0.1", "SQLAlchemy~=1.3"],
     include_package_data=True,
-
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6'
-        'Programming Language :: Python :: 3.7'
-        'Programming Language :: Python :: 3.8'
+        "Development Status :: 5 - Production/Stable",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6"
+        "Programming Language :: Python :: 3.7"
+        "Programming Language :: Python :: 3.8",
     ],
 )
