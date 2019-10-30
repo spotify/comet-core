@@ -23,7 +23,7 @@ from hashlib import sha256, shake_256
 HASH_BYTES = 16  # 128 bits of entropy, will result in 32 character hexdigest string
 
 
-def comet_event_fingerprint(data_dict, blacklist=None, prefix=''):
+def comet_event_fingerprint(data_dict, blacklist=None, prefix=""):
     """Computes the fingerprint of an event by hashing it's data dictionary.
 
     Args:
@@ -36,7 +36,7 @@ def comet_event_fingerprint(data_dict, blacklist=None, prefix=''):
     data_dict_copy = deepcopy(data_dict)
     filtered_dict = filter_dict(data_dict_copy, blacklist if blacklist is not None else [])
     data_hash_str = dict_to_hash(filtered_dict)
-    return f'{prefix}{data_hash_str}'
+    return f"{prefix}{data_hash_str}"
 
 
 def filter_dict(orig_dict, blacklist):
@@ -96,7 +96,7 @@ def str_to_hash(input_str):
     Returns:
         str: hash in hexadecimal representation (2 characters per byte)
     """
-    input_bytes = input_str.encode('utf-8')
+    input_bytes = input_str.encode("utf-8")
     hash_str = shake_256(input_bytes).hexdigest(HASH_BYTES)  # pylint: disable=too-many-function-args
     return hash_str
 
@@ -114,4 +114,4 @@ def fingerprint_hmac(fingerprint, hmac_secret):
         str: hmac as hexdigest str
 
     """
-    return hmac.new(bytes(hmac_secret, 'utf-8'), msg=bytes(fingerprint, 'utf-8'), digestmod=sha256).hexdigest()
+    return hmac.new(bytes(hmac_secret, "utf-8"), msg=bytes(fingerprint, "utf-8"), digestmod=sha256).hexdigest()

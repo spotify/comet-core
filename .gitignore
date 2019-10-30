@@ -58,3 +58,6 @@ comet_core.code-workspace
 .cache/
 .vscode/
 test-reports/
+
+# Pyenv versions
+.python-version

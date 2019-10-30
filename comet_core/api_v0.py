@@ -22,11 +22,16 @@ from datetime import timedelta, datetime
 
 from flask import Blueprint, g, jsonify, request, render_template_string
 
-from comet_core.api_helper import hydrate_open_issues, get_db, requires_auth, \
-    assert_valid_token, hydrate_with_request_headers
+from comet_core.api_helper import (
+    hydrate_open_issues,
+    get_db,
+    requires_auth,
+    assert_valid_token,
+    hydrate_with_request_headers,
+)
 from comet_core.model import IgnoreFingerprintRecord
 
-bp = Blueprint('v0', __name__, url_prefix='/v0')  # pylint: disable=invalid-name
+bp = Blueprint("v0", __name__, url_prefix="/v0")  # pylint: disable=invalid-name
 LOG = logging.getLogger(__name__)
 
 
@@ -40,15 +45,17 @@ def action_succeeded(message=None, status_code=200):
         Tuple[Union[str,flask.Response],int]: rendered html code or json Response object and http code
                                               with a success message
     """
-    if request.method == 'POST':
-        response = {'status': 'ok'}
+    if request.method == "POST":
+        response = {"status": "ok"}
         if message:
-            response['msg'] = message
+            response["msg"] = message
         return jsonify(response), status_code
 
-    template = '<h2>{{ message }}</h2> ' \
-               '<p>Note: This feature is still early in development, ' \
-               'please reach out to Security if you have any feedback.</p>'
+    template = (
+        "<h2>{{ message }}</h2> "
+        "<p>Note: This feature is still early in development, "
+        "please reach out to Security if you have any feedback.</p>"
+    )
     return render_template_string(template, message=message), status_code
 
 
@@ -62,16 +69,18 @@ def action_failed(message=None, status_code=500):
         Tuple[Union[str,flask.Response],int]: rendered html code or json Response object and http code
                                               with an error message
     """
-    if request.method == 'POST':
-        response = {'status': 'error'}
+    if request.method == "POST":
+        response = {"status": "error"}
         if message:
-            response['message'] = message
+            response["message"] = message
         return jsonify(response), status_code
 
-    template = '<h2>Something went wrong: {{ message }}</h2> ' \
-               '<p>Please complete the action by emailing to Security.</p>' \
-               '<p>Note: This feature is still early in development, ' \
-               'please reach out to Security if you have any feedback.</p>'
+    template = (
+        "<h2>Something went wrong: {{ message }}</h2> "
+        "<p>Please complete the action by emailing to Security.</p>"
+        "<p>Note: This feature is still early in development, "
+        "please reach out to Security if you have any feedback.</p>"
+    )
     return render_template_string(template, message=message), status_code
 
 
@@ -86,16 +95,16 @@ def assert_fingerprint_syntax(fingerprint):
         ValueError: if the fingerprint is empty, too long, too short or contains invalid characters
     """
     if not fingerprint:
-        raise ValueError('fingerprint invalid: None/empty')
+        raise ValueError("fingerprint invalid: None/empty")
 
     if len(fingerprint) < 8:
-        raise ValueError('fingerprint invalid: shorter than 8 characters')
+        raise ValueError("fingerprint invalid: shorter than 8 characters")
     if len(fingerprint) > 1024:
-        raise ValueError('fingerprint invalid: longer than 1024 characters')
+        raise ValueError("fingerprint invalid: longer than 1024 characters")
 
-    pattern = re.compile('[a-zA-Z0-9._-]*')
+    pattern = re.compile("[a-zA-Z0-9._-]*")
     if not pattern.fullmatch(fingerprint):
-        raise ValueError('fingerprint invalid: contains invalid characters')
+        raise ValueError("fingerprint invalid: contains invalid characters")
 
 
 def get_and_check_fingerprint():
@@ -110,30 +119,30 @@ def get_and_check_fingerprint():
     Returns:
         str: fingerprint
     """
-    if request.method == 'POST':
+    if request.method == "POST":
         request_json = request.get_json()
         if not request_json:
-            raise ValueError('No json data in post request.')
-        if 'fingerprint' not in request_json:
-            raise ValueError('No fingerprint parameter in json data.')
-        if 'token' not in request_json:
-            raise ValueError('No token parameter in json data.')
+            raise ValueError("No json data in post request.")
+        if "fingerprint" not in request_json:
+            raise ValueError("No fingerprint parameter in json data.")
+        if "token" not in request_json:
+            raise ValueError("No token parameter in json data.")
 
-        fingerprint = request_json['fingerprint']
-        token = request_json['token']
+        fingerprint = request_json["fingerprint"]
+        token = request_json["token"]
 
         assert_fingerprint_syntax(fingerprint)
 
         assert_valid_token(fingerprint, token)
 
-    if request.method == 'GET':
-        if 'fp' not in request.args:
-            raise ValueError('No fingerprint parameter in URL.')
-        if 't' not in request.args:
-            raise ValueError('No token parameter in URL.')
+    if request.method == "GET":
+        if "fp" not in request.args:
+            raise ValueError("No fingerprint parameter in URL.")
+        if "t" not in request.args:
+            raise ValueError("No token parameter in URL.")
 
-        fingerprint = request.args['fp']
-        token = request.args['t']
+        fingerprint = request.args["fp"]
+        token = request.args["t"]
 
         assert_fingerprint_syntax(fingerprint)
 
@@ -151,14 +160,14 @@ def acceptrisk():
     try:
         fingerprint = get_and_check_fingerprint()
         record_metadata = hydrate_with_request_headers(request)
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ACCEPT_RISK,
-                                          record_metadata=record_metadata)
+        get_db().ignore_event_fingerprint(
+            fingerprint, IgnoreFingerprintRecord.ACCEPT_RISK, record_metadata=record_metadata
+        )
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on acceptrisk')
-        return action_failed('acceptrisk failed')
+        LOG.exception("Got exception on acceptrisk")
+        return action_failed("acceptrisk failed")
 
-    return action_succeeded('Alert successfully marked as accept risk.')
+    return action_succeeded("Alert successfully marked as accept risk.")
 
 
 def snooze():
@@ -171,15 +180,14 @@ def snooze():
         fingerprint = get_and_check_fingerprint()
         expires_at = datetime.utcnow() + timedelta(days=30)
         record_metadata = hydrate_with_request_headers(request)
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.SNOOZE,
-                                          expires_at=expires_at,
-                                          record_metadata=record_metadata)
+        get_db().ignore_event_fingerprint(
+            fingerprint, IgnoreFingerprintRecord.SNOOZE, expires_at=expires_at, record_metadata=record_metadata
+        )
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on snooze')
-        return action_failed('snooze failed')
+        LOG.exception("Got exception on snooze")
+        return action_failed("snooze failed")
 
-    return action_succeeded('Alert successfully snoozed.')
+    return action_succeeded("Alert successfully snoozed.")
 
 
 def acknowledge():
@@ -191,14 +199,14 @@ def acknowledge():
     try:
         fingerprint = get_and_check_fingerprint()
         record_metadata = hydrate_with_request_headers(request)
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ACKNOWLEDGE,
-                                          record_metadata=record_metadata)
+        get_db().ignore_event_fingerprint(
+            fingerprint, IgnoreFingerprintRecord.ACKNOWLEDGE, record_metadata=record_metadata
+        )
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on acknowledge')
-        return action_failed('acknowledgement failed for some reason')
+        LOG.exception("Got exception on acknowledge")
+        return action_failed("acknowledgement failed for some reason")
 
-    return action_succeeded('Thanks for acknowledging!')
+    return action_succeeded("Thanks for acknowledging!")
 
 
 def falsepositive():
@@ -210,14 +218,14 @@ def falsepositive():
     try:
         fingerprint = get_and_check_fingerprint()
         record_metadata = hydrate_with_request_headers(request)
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.FALSE_POSITIVE,
-                                          record_metadata=record_metadata)
+        get_db().ignore_event_fingerprint(
+            fingerprint, IgnoreFingerprintRecord.FALSE_POSITIVE, record_metadata=record_metadata
+        )
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on falsepositive')
-        return action_failed('Reporting as false positive failed.')
+        LOG.exception("Got exception on falsepositive")
+        return action_failed("Reporting as false positive failed.")
 
-    return action_succeeded('Thanks! We’ve marked this as a false positive')
+    return action_succeeded("Thanks! We’ve marked this as a false positive")
 
 
 def escalate():
@@ -230,30 +238,30 @@ def escalate():
         fingerprint = get_and_check_fingerprint()
         record_metadata = hydrate_with_request_headers(request)
         # indication that the user addressed the alert and escalate.
-        get_db().ignore_event_fingerprint(fingerprint,
-                                          IgnoreFingerprintRecord.ESCALATE_MANUALLY,
-                                          record_metadata=record_metadata)
+        get_db().ignore_event_fingerprint(
+            fingerprint, IgnoreFingerprintRecord.ESCALATE_MANUALLY, record_metadata=record_metadata
+        )
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on escalate real time alert')
-        return action_failed('Escalation failed for some reason')
+        LOG.exception("Got exception on escalate real time alert")
+        return action_failed("Escalation failed for some reason")
 
-    return action_succeeded('Thanks! This alert has been escalated.')
+    return action_succeeded("Thanks! This alert has been escalated.")
 
 
 # API ENDPOINTS
 
 
-@bp.route('/')
+@bp.route("/")
 def health_check():
     """Can be called by e.g. Kubernetes to verify that the API is up
 
      Returns:
         str: the static string "Comet-API", could be anything
     """
-    return 'Comet-API-v0'
+    return "Comet-API-v0"
 
 
-@bp.route('/dbcheck')
+@bp.route("/dbcheck")
 def dbhealth_check():
     """Can be called by e.g. Kubernetes to verify that the API is up and is able to query DB
 
@@ -261,15 +269,15 @@ def dbhealth_check():
         str: the static string "Comet-API", could be anything
     """
     try:
-        get_db().get_latest_event_with_fingerprint('xxx')
+        get_db().get_latest_event_with_fingerprint("xxx")
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on dbhealth_check')
-        return jsonify({'status': 'error', 'msg': 'dbhealth_check failed'}), 500
+        LOG.exception("Got exception on dbhealth_check")
+        return jsonify({"status": "error", "msg": "dbhealth_check failed"}), 500
 
-    return 'Comet-API-v0'
+    return "Comet-API-v0"
 
 
-@bp.route('/acceptrisk', methods=['GET'])
+@bp.route("/acceptrisk", methods=["GET"])
 def acceptrisk_get():
     """This endpoint expose the acceptrisk functionality via GET request.
     Doesn't required authentication because we are
@@ -282,7 +290,7 @@ def acceptrisk_get():
     return acceptrisk()
 
 
-@bp.route('/acceptrisk', methods=['POST'])
+@bp.route("/acceptrisk", methods=["POST"])
 @requires_auth
 def acceptrisk_post():
     """This endpoint expose the acceptrisk functionality via POST request.
@@ -294,7 +302,7 @@ def acceptrisk_post():
     return acceptrisk()
 
 
-@bp.route('/snooze', methods=['GET'])
+@bp.route("/snooze", methods=["GET"])
 def snooze_get():
     """This endpoint expose the snooze functionality via GET request.
     Doesn't required authentication because we are
@@ -307,7 +315,7 @@ def snooze_get():
     return snooze()
 
 
-@bp.route('/snooze', methods=['POST'])
+@bp.route("/snooze", methods=["POST"])
 @requires_auth
 def snooze_post():
     """This endpoint expose the snooze functionality via POST request.
@@ -319,7 +327,7 @@ def snooze_post():
     return snooze()
 
 
-@bp.route('/falsepositive', methods=['GET'])
+@bp.route("/falsepositive", methods=["GET"])
 def falsepositive_get():
     """This endpoint expose the falsepositive functionality via GET request.
     Doesn't required authentication because we are
@@ -332,7 +340,7 @@ def falsepositive_get():
     return falsepositive()
 
 
-@bp.route('/falsepositive', methods=['POST'])
+@bp.route("/falsepositive", methods=["POST"])
 @requires_auth
 def falsepositive_post():
     """This endpoint expose the falsepositive functionality via POST request.
@@ -344,7 +352,7 @@ def falsepositive_post():
     return falsepositive()
 
 
-@bp.route('/acknowledge', methods=['GET'])
+@bp.route("/acknowledge", methods=["GET"])
 def acknowledge_get():
     """This endpoint expose the acknowledge functionality via GET request.
     Doesn't required authentication because we are
@@ -357,7 +365,7 @@ def acknowledge_get():
     return acknowledge()
 
 
-@bp.route('/acknowledge', methods=['POST'])
+@bp.route("/acknowledge", methods=["POST"])
 @requires_auth
 def acknowledge_post():
     """This endpoint expose the acknowledge functionality via POST request.
@@ -369,7 +377,7 @@ def acknowledge_post():
     return acknowledge()
 
 
-@bp.route('/escalate', methods=['GET'])
+@bp.route("/escalate", methods=["GET"])
 def escalate_get():
     """This endpoint expose the escalate functionality via GET request.
     Doesn't required authentication because we are
@@ -382,7 +390,7 @@ def escalate_get():
     return escalate()
 
 
-@bp.route('/escalate', methods=['POST'])
+@bp.route("/escalate", methods=["POST"])
 @requires_auth
 def escalate_post():
     """This endpoint expose the escalate functionality via POST request.
@@ -394,7 +402,7 @@ def escalate_post():
     return escalate()
 
 
-@bp.route('/issues')
+@bp.route("/issues")
 @requires_auth
 def get_issues():
     """Return a list of issues for the user that authenticated.
@@ -405,13 +413,13 @@ def get_issues():
     try:
         raw_issues = get_db().get_open_issues(g.authorized_for)
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on get_issues.get_db().get_open_issues')
-        return jsonify({'status': 'error', 'msg': 'get_open_issues failed'}), 500
+        LOG.exception("Got exception on get_issues.get_db().get_open_issues")
+        return jsonify({"status": "error", "msg": "get_open_issues failed"}), 500
 
     try:
         hydrated_issues = hydrate_open_issues(raw_issues)
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception('Got exception on get_issues.hydrate_open_issues')
-        return jsonify({'status': 'error', 'msg': 'hydrate_open_issues failed'}), 500
+        LOG.exception("Got exception on get_issues.hydrate_open_issues")
+        return jsonify({"status": "error", "msg": "hydrate_open_issues failed"}), 500
 
     return jsonify(hydrated_issues)

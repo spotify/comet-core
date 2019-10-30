@@ -14,8 +14,8 @@
 
 """comet - Comet Distributed Security Notification System"""
 
-__author__ = 'Spotify Security Wasabi team <wasabi@spotify.com>'
-__all__ = ['Comet']
+__author__ = "Spotify Security Wasabi team <wasabi@spotify.com>"
+__all__ = ["Comet"]
 
 import logging
 from pythonjsonlogger import jsonlogger
@@ -27,6 +27,7 @@ from comet_core.app import Comet
 root_logger = logging.getLogger()
 
 stderr_handler = logging.StreamHandler()
-stderr_handler.setFormatter(jsonlogger.JsonFormatter("%(asctime)s %(levelname)s %(name)s %(message)s",
-                                                     "%Y-%m-%dT%H:%M:%S"))
+stderr_handler.setFormatter(
+    jsonlogger.JsonFormatter("%(asctime)s %(levelname)s %(name)s %(message)s", "%Y-%m-%dT%H:%M:%S")
+)
 root_logger.addHandler(stderr_handler)

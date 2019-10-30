@@ -24,7 +24,7 @@ from comet_core import api_v0
 LOG = logging.getLogger(__name__)
 
 
-class CometApi():  # pylint: disable=too-many-instance-attributes
+class CometApi:  # pylint: disable=too-many-instance-attributes
     """The Comet API
 
     Args:
@@ -35,12 +35,7 @@ class CometApi():  # pylint: disable=too-many-instance-attributes
         hmac_secret (str): the server secret to use in GET requests auth
     """
 
-    def __init__(self,
-                 cors_origins=None,
-                 database_uri='sqlite://',
-                 host='0.0.0.0',
-                 port=5000,
-                 hmac_secret=''):
+    def __init__(self, cors_origins=None, database_uri="sqlite://", host="0.0.0.0", port=5000, hmac_secret=""):
         self.cors_origins = cors_origins if cors_origins is not None else []
         self.database_uri = database_uri
         self.host = host
@@ -100,30 +95,25 @@ class CometApi():  # pylint: disable=too-many-instance-attributes
         """
         app = Flask(__name__)
 
-        app.config['auth_func'] = self.auth_func
-        app.config['hydrator_func'] = self.hydrator_func
-        app.config['request_hydrator_func'] = self.request_hydrator_func
-        app.config['database_uri'] = self.database_uri
-        app.config['hmac_secret'] = self.hmac_secret
+        app.config["auth_func"] = self.auth_func
+        app.config["hydrator_func"] = self.hydrator_func
+        app.config["request_hydrator_func"] = self.request_hydrator_func
+        app.config["database_uri"] = self.database_uri
+        app.config["hmac_secret"] = self.hmac_secret
 
         cors = CORS()
-        cors.init_app(app, resources={
-            r'/*': {
-                'origins': self.cors_origins,
-                'supports_credentials': True
-            }
-        })
+        cors.init_app(app, resources={r"/*": {"origins": self.cors_origins, "supports_credentials": True}})
 
         app.register_blueprint(api_v0.bp)
 
-        @app.route('/')
+        @app.route("/")
         def health_check():  # pylint: disable=unused-variable
             """Can be called by e.g. Kubernetes to verify that the API is up
 
             Returns:
                 str: the static string "Comet-API", could be anything
             """
-            return 'Comet-API'
+            return "Comet-API"
 
         return app
 

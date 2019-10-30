@@ -20,22 +20,21 @@ from sqlalchemy import Column, DateTime, Integer, JSON, String, UnicodeText, typ
 from sqlalchemy.ext.declarative import declarative_base
 
 
-class BaseRecordRepr():
+class BaseRecordRepr:
     """
     This class can be used by declarative_base, to add an automatic
     __repr__ method to *all* subclasses of BaseRecord.
     """
+
     def __repr__(self):
         """Return a representation of this object as a string.
 
         Returns:
             str: a representation of the object.
         """
-        return f'{self.__class__.__name__}: ' + \
-               ' '.join(
-                   [f'{k}={self.__getattribute__(k)}'
-                    for k, v in self.__class__.__dict__.items()
-                    if hasattr(v, '__set__')])
+        return f"{self.__class__.__name__}: " + " ".join(
+            [f"{k}={self.__getattribute__(k)}" for k, v in self.__class__.__dict__.items() if hasattr(v, "__set__")]
+        )
 
 
 BaseRecord = declarative_base(cls=BaseRecordRepr)
@@ -43,6 +42,7 @@ BaseRecord = declarative_base(cls=BaseRecordRepr)
 
 class JSONType(types.TypeDecorator):  # pylint: disable=abstract-method
     """This is for testing purposes, to make the JSON type work with sqlite."""
+
     impl = UnicodeText
 
     def load_dialect_impl(self, dialect):
@@ -54,7 +54,7 @@ class JSONType(types.TypeDecorator):  # pylint: disable=abstract-method
         Returns:
             object: if dialect name is 'mysql' it will override the type descriptor to JSON()
         """
-        if dialect.name == 'mysql':
+        if dialect.name == "mysql":
             return dialect.type_descriptor(JSON())
         return dialect.type_descriptor(self.impl)
 
@@ -68,7 +68,7 @@ class JSONType(types.TypeDecorator):  # pylint: disable=abstract-method
         Returns:
             json: the processed value
         """
-        if dialect.name == 'mysql':
+        if dialect.name == "mysql":
             return value
         if value is not None:
             value = json.dumps(value)
@@ -84,7 +84,7 @@ class JSONType(types.TypeDecorator):  # pylint: disable=abstract-method
         Returns:
             str: the processed value
         """
-        if dialect.name == 'mysql':
+        if dialect.name == "mysql":
             return value
         if value is not None:
             value = json.loads(value)
@@ -97,7 +97,8 @@ class EventRecord(BaseRecord):
         args (list) : arguments list passed to the BaseRecord constructor
         kwargs (dict) : arguments dict passed to the BaseRecord constructor
     """
-    __tablename__ = 'event'
+
+    __tablename__ = "event"
     id = Column(Integer, primary_key=True)
     source_type = Column(String(250), nullable=False)
     fingerprint = Column(String(250))
@@ -130,7 +131,8 @@ class EventRecord(BaseRecord):
 class IgnoreFingerprintRecord(BaseRecord):
     """Acceptedrisk model.
     """
-    __tablename__ = 'ignore_fingerprint'
+
+    __tablename__ = "ignore_fingerprint"
     id = Column(Integer, primary_key=True)
     fingerprint = Column(String(250))
     ignore_type = Column(String(50))
@@ -138,8 +140,8 @@ class IgnoreFingerprintRecord(BaseRecord):
     expires_at = Column(DateTime, default=None)
     record_metadata = Column(JSONType())
 
-    SNOOZE = 'snooze'
-    ACCEPT_RISK = 'acceptrisk'
-    FALSE_POSITIVE = 'falsepositive'
-    ACKNOWLEDGE = 'acknowledge'
-    ESCALATE_MANUALLY = 'escalate_manually'
+    SNOOZE = "snooze"
+    ACCEPT_RISK = "acceptrisk"
+    FALSE_POSITIVE = "falsepositive"
+    ACKNOWLEDGE = "acknowledge"
+    ESCALATE_MANUALLY = "escalate_manually"
