@@ -209,6 +209,25 @@ def acknowledge():
     return action_succeeded("Thanks for acknowledging!")
 
 
+def resolve():
+    """Mark the alert with the given fingerprint as resolved (applies to real-time alerts only).
+
+    Returns:
+        str: the HTTP response string
+    """
+    try:
+        fingerprint = get_and_check_fingerprint()
+        record_metadata = hydrate_with_request_headers(request)
+        get_db().ignore_event_fingerprint(
+            fingerprint, IgnoreFingerprintRecord.RESOLVED, record_metadata=record_metadata
+        )
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception("Got exception on resolved")
+        return action_failed("Resolution failed for some reason")
+
+    return action_succeeded("Thanks for resolving the issue!")
+
+
 def falsepositive():
     """Mark alerts with the given fingerprint as falsepositive (silence them).
 
@@ -325,6 +344,31 @@ def snooze_post():
         str: The response from the snooze function
     """
     return snooze()
+
+
+@bp.route("/resolve", methods=["GET"])
+def resolve_get():
+    """This endpoint expose the resolved functionality via GET request.
+    Doesn't required authentication because we are
+    handling the auth by validating the token passed in the request.
+    For details on the resolved function see :func:`~comet_core.api_v0.resolved`
+
+    Returns:
+        str: The response from the resolved function
+    """
+    return resolve()
+
+
+@bp.route("/resolve", methods=["POST"])
+@requires_auth
+def resolve_post():
+    """This endpoint expose the resolved functionality via POST request.
+    For details on the resolved function see :func:`~comet_core.api_v0.resolved`
+
+    Returns:
+        str: The response from the resolved function
+    """
+    return resolve()
 
 
 @bp.route("/falsepositive", methods=["GET"])
