@@ -145,3 +145,4 @@ class IgnoreFingerprintRecord(BaseRecord):
     FALSE_POSITIVE = "falsepositive"
     ACKNOWLEDGE = "acknowledge"
     ESCALATE_MANUALLY = "escalate_manually"
+    RESOLVED = "resolved"

@@ -165,6 +165,35 @@ post_json_data = {
 }
 
 
+def test_resolve(client):
+    """Test the resolve GET endpoint works"""
+    g.test_authorized_for = []
+    res = client.get("/v0/resolve" + get_request_args)
+    assert "Thanks for resolving the issue!" in res.data.decode("utf-8")
+
+
+def test_resolve_no_token_passed(client):
+    """Test the resolve endpoint fails when
+       the token is not passed in the args"""
+    g.test_authorized_for = []
+    res = client.get("/v0/resolve?fp=splunk_kjsdkjfskdfhskjdf")
+    assert res.status == "500 INTERNAL SERVER ERROR"
+
+
+def test_resolve_post(client):
+    """Test the resolve POST endpoint works"""
+    g.test_authorized_for = []
+    res = client.post("/v0/resolve", json=post_json_data)
+    expected_response = '{"msg":"Thanks for resolving the issue!",' '"status":"ok"}'
+    assert expected_response in res.data.decode("utf-8")
+
+
+def test_resolve_error(bad_client):
+    """Test the resolve endpoint fails when the args are missing"""
+    res = bad_client.get("/v0/resolve")
+    assert res.status == "500 INTERNAL SERVER ERROR"
+
+
 def test_falsepositive(client):
     """Test the falsepositive GET endpoint works"""
     g.test_authorized_for = []
