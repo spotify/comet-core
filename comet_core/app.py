@@ -478,14 +478,7 @@ class Comet:
                 if source_type in self.real_time_config_providers:
                     event_config = self.real_time_config_providers[source_type](event)
 
-                # This pattern is used instead of .get since escalate_cadence is allowed to
-                # be falsy, but also missing.
-                # If it is explicitly set to a falsy value, that should be honoured and
-                # escalation should not take place, but if it is missing it should default
-                # to 36H.
-                escalate_cadence = (
-                    event_config["escalate_cadence"] if "escalate_cadence" in event_config else timedelta(hours=36)
-                )
+                escalate_cadence = event_config.get("escalate_cadence", timedelta(hours=36))
 
                 if escalate_cadence:
                     event_sent_at = event.sent_at

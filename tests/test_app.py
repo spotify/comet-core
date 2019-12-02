@@ -498,6 +498,80 @@ def test_handle_non_addressed_events():
     assert escalator2.call_count == 0
 
 
+def test_handle_non_escalatable_events(app):
+    """Test that Comet handles events that has been set to not escalate."""
+
+    @app.register_parser("real_time_source")
+    def parse_message(message):
+        data = json.loads(message)
+        return data, {}
+
+    @app.register_config_provider("real_time_source")
+    def register_conf(event):
+        return {"escalate_cadence": False}
+
+    app.register_real_time_source("real_time_source")
+
+    escalator = mock.Mock()
+    app.register_escalator("real_time_source", func=escalator)
+
+    # This event should not be escalated.
+    app.data_store.add_record(
+        EventRecord(
+            id=2,
+            received_at=datetime.utcnow() - timedelta(hours=1),
+            source_type="real_time_source",
+            owner="event owner",
+            processed_at=datetime.utcnow() - timedelta(hours=1),
+            sent_at=datetime.utcnow() - timedelta(hours=1),
+            data={"search_name": "alert search name", "name": "needs escalation"},
+            fingerprint="f2",
+        )
+    )
+
+    app.handle_non_addressed_events()
+    assert escalator.call_count == 0
+
+
+def test_handle_default_escalation_strategy(app):
+    """Test that the default 36H escalation is honoured if no escalation is set.
+
+    This differs from the "do-not-escalate"-test since there the escalation is
+    explicitly set to False and here it is missing.
+    """
+
+    @app.register_parser("real_time_source")
+    def parse_message(message):
+        data = json.loads(message)
+        return data, {}
+
+    @app.register_config_provider("real_time_source")
+    def register_conf(event):
+        return {}
+
+    app.register_real_time_source("real_time_source")
+
+    escalator = mock.Mock()
+    app.register_escalator("real_time_source", func=escalator)
+
+    # This event should not be escalated.
+    app.data_store.add_record(
+        EventRecord(
+            id=2,
+            received_at=datetime.utcnow() - timedelta(hours=1),
+            source_type="real_time_source",
+            owner="event owner",
+            processed_at=datetime.utcnow() - timedelta(hours=1),
+            sent_at=datetime.utcnow() - timedelta(hours=36),
+            data={"search_name": "alert search name", "name": "needs escalation"},
+            fingerprint="f2",
+        )
+    )
+
+    app.handle_non_addressed_events()
+    assert escalator.call_count == 1
+
+
 def test_register_real_time_source(app):
     assert not app.real_time_sources
 
