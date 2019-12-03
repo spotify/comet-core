@@ -554,7 +554,7 @@ def test_handle_default_escalation_strategy(app):
     escalator = mock.Mock()
     app.register_escalator("real_time_source", func=escalator)
 
-    # This event should not be escalated.
+    # This event should be escalated once
     app.data_store.add_record(
         EventRecord(
             id=2,
