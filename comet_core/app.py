@@ -480,10 +480,11 @@ class Comet:
 
                 escalate_cadence = event_config.get("escalate_cadence", timedelta(hours=36))
 
-                event_sent_at = event.sent_at
-                # when is earliest time to escalate the specific event
-                if event_sent_at <= datetime.utcnow() - escalate_cadence:
-                    events_needs_escalation.append(event)
+                if escalate_cadence:
+                    event_sent_at = event.sent_at
+                    # when is earliest time to escalate the specific event
+                    if event_sent_at <= datetime.utcnow() - escalate_cadence:
+                        events_needs_escalation.append(event)
 
             self._handle_events_need_escalation(source_type, events_needs_escalation)
 
