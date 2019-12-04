@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import setuptools
 
 setuptools.setup(
@@ -23,6 +22,7 @@ setuptools.setup(
     author_email="wasabi@spotify.com",
     description="Comet Distributed Security Notification Framework",
     long_description=open("README.md", "r+", encoding="utf-8").read(),
+    long_description_content_type="text/markdown",
     packages=["comet_core"],
     install_requires=["Flask~=1.0", "Flask-Cors~=3.0", "python-json-logger~=0.1", "SQLAlchemy~=1.3"],
     include_package_data=True,
