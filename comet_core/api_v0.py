@@ -113,7 +113,7 @@ def get_and_check_fingerprint(validate_token=True):
     Also validate the token passed in the request
 
     Args:
-        validate_token (bool): A parameter to validate the request or not
+        validate_token (bool): A parameter to validate the request token or not
     Raises:
         ValueError: if the POST request did not contain json data,
         or if the json data did not contain a fingerprint
