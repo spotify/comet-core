@@ -107,11 +107,13 @@ def assert_fingerprint_syntax(fingerprint):
         raise ValueError("fingerprint invalid: contains invalid characters")
 
 
-def get_and_check_fingerprint():
+def get_and_check_fingerprint(validate_token=True):
     """Reads the fingerprint from a POST request json data if it
     was a POST request, also checks its syntax.
     Also validate the token passed in the request
 
+    Args:
+        validate_token (bool): A parameter to validate the request or not
     Raises:
         ValueError: if the POST request did not contain json data,
         or if the json data did not contain a fingerprint
@@ -132,8 +134,8 @@ def get_and_check_fingerprint():
         token = request_json["token"]
 
         assert_fingerprint_syntax(fingerprint)
-
-        assert_valid_token(fingerprint, token)
+        if validate_token:
+            assert_valid_token(fingerprint, token)
 
     if request.method == "GET":
         if "fp" not in request.args:
@@ -145,8 +147,8 @@ def get_and_check_fingerprint():
         token = request.args["t"]
 
         assert_fingerprint_syntax(fingerprint)
-
-        assert_valid_token(fingerprint, token)
+        if validate_token:
+            assert_valid_token(fingerprint, token)
 
     return fingerprint
 
@@ -265,6 +267,22 @@ def escalate():
         return action_failed("Escalation failed for some reason")
 
     return action_succeeded("Thanks! This alert has been escalated.")
+
+
+def get_events():
+    """Return a list of all the events for an associated fingerprint
+
+        Returns:
+            str: json list containing one dictionary for each event
+        """
+    try:
+        fingerprint = get_and_check_fingerprint(validate_token=False)
+        events = get_db().get_events_for_fingerprint(fingerprint)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception("Got exception on get_issues.get_db().get_open_issues")
+        return jsonify({"status": "error", "msg": "get_events failed"}), 500
+
+    return jsonify(events)
 
 
 # API ENDPOINTS
@@ -469,18 +487,25 @@ def get_issues():
     return jsonify(hydrated_issues)
 
 
-@bp.route("/events")
-@requires_auth
-def get_events():
-    """Return a list of all the events for an associated fingerprint
+@bp.route("/events", methods=["GET"])
+def get_events_get():
+    """This endpoint expose the get_events functionality via GET request.
+    Doesn't required authentication as the information returned is deemed not sensitive.
+    For details on the get_events function see :func:`~comet_core.api_v0.get_events`
 
     Returns:
-        str: json list, containing one json dictionary for each event
+        json: A json list containing a dictionary for each event
     """
-    try:
-        raw_events = get_db().get_events_for_fingerprint(g.authorized_for)
-    except Exception as _:  # pylint: disable=broad-except
-        LOG.exception("Got exception on get_issues.get_db().get_open_issues")
-        return jsonify({"status": "error", "msg": "get_open_issues failed"}), 500
+    return get_events()
 
-    return jsonify(raw_events)
+
+@bp.route("/events", methods=["POST"])
+def get_events_post():
+    """This endpoint expose the get_events functionality via POST request.
+    Doesn't required authentication as the information returned is deemed not sensitive.
+    For details on the get_events function see :func:`~comet_core.api_v0.get_events`
+
+    Returns:
+        json: A json list containing a dictionary for each event
+    """
+    return get_events()

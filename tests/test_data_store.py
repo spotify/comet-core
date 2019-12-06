@@ -514,6 +514,8 @@ def test_get_events_for_fingerprint(ds_instance):
         fingerprint, ignore_type=one_a.ignore_type, record_metadata=one_a.record_metadata, reported_at=one_a.reported_at
     )
 
-    expected = [{"id": 1, "fingerprint": "f1", "ignore_type": "resolved", "reported_at": datetime(2019, 1, 1, 0, 0, 11)}]
+    expected = [
+        {"id": 1, "fingerprint": "f1", "ignore_type": "resolved", "reported_at": datetime(2019, 1, 1, 0, 0, 11)}
+    ]
     result = ds_instance.get_events_for_fingerprint(fingerprint)
     assert result == expected

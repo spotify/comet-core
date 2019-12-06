@@ -16,14 +16,12 @@
 
 from datetime import datetime, timedelta
 from itertools import tee, islice, chain
-from pprint import pprint
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.expression import func
 
 from comet_core.model import BaseRecord, EventRecord, IgnoreFingerprintRecord
-
 
 Session = sessionmaker(autocommit=True)  # pylint: disable=invalid-name
 
@@ -255,7 +253,9 @@ class DataStore:
 
         return oldest_event.received_at <= datetime.utcnow() - escalation_time
 
-    def ignore_event_fingerprint(self, fingerprint, ignore_type, expires_at=None, reported_at=None, record_metadata=None):
+    def ignore_event_fingerprint(
+        self, fingerprint, ignore_type, expires_at=None, reported_at=None, record_metadata=None
+    ):
         """Add a fingerprint to the list of ignored events
         Args:
             fingerprint (str): fingerprint of the event to ignore
@@ -265,7 +265,11 @@ class DataStore:
             record_metadata (dict): metadata to hydrate the record with.
         """
         new_record = IgnoreFingerprintRecord(
-            fingerprint=fingerprint, ignore_type=ignore_type, expires_at=expires_at, reported_at=reported_at, record_metadata=record_metadata
+            fingerprint=fingerprint,
+            ignore_type=ignore_type,
+            expires_at=expires_at,
+            reported_at=reported_at,
+            record_metadata=record_metadata,
         )
         self.session.begin()
         self.session.add(new_record)
@@ -423,12 +427,8 @@ class DataStore:
         """
 
         events = (
-            self.session.query(IgnoreFingerprintRecord)
-            .filter(IgnoreFingerprintRecord.fingerprint == fingerprint)
-            .all()
+            self.session.query(IgnoreFingerprintRecord).filter(IgnoreFingerprintRecord.fingerprint == fingerprint).all()
         )
-        for t in events:
-            print(t)
         return [
             {"id": t.id, "fingerprint": t.fingerprint, "ignore_type": t.ignore_type, "reported_at": t.reported_at}
             for t in events
