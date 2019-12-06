@@ -121,20 +121,21 @@ def get_and_check_fingerprint(validate_token=True):
     Returns:
         str: fingerprint
     """
+    fingerprint = None
     if request.method == "POST":
         request_json = request.get_json()
         if not request_json:
             raise ValueError("No json data in post request.")
+
         if "fingerprint" not in request_json:
             raise ValueError("No fingerprint parameter in json data.")
-        if "token" not in request_json:
-            raise ValueError("No token parameter in json data.")
-
         fingerprint = request_json["fingerprint"]
-        token = request_json["token"]
-
         assert_fingerprint_syntax(fingerprint)
+
         if validate_token:
+            if "token" not in request_json:
+                raise ValueError("No token parameter in json data.")
+            token = request_json["token"]
             assert_valid_token(fingerprint, token)
 
     if request.method == "GET":
@@ -144,10 +145,10 @@ def get_and_check_fingerprint(validate_token=True):
             raise ValueError("No token parameter in URL.")
 
         fingerprint = request.args["fp"]
-        token = request.args["t"]
-
         assert_fingerprint_syntax(fingerprint)
+
         if validate_token:
+            token = request.args["t"]
             assert_valid_token(fingerprint, token)
 
     return fingerprint

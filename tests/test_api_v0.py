@@ -334,5 +334,5 @@ def test_endpoint_post_no_request_hydrator(client_without_request_hydrator):
 
 
 def test_endpoint_get_interactions(client):
-    res = client.post("/v0/events", json=post_json_data)
+    res = client.post("/v0/interactions", json=post_json_data)
     assert "[]" in res.data.decode("utf-8")
