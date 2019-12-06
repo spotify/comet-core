@@ -323,11 +323,11 @@ def test_endpoint_get_request_hydrator(client):
     assert "Thanks for acknowledging!" in res.data.decode("utf-8")
 
 
-def test_endpoint_post_no_request_hydrator(client):
+def test_endpoint_post_no_request_hydrator(client_without_request_hydrator):
     """test that even if comet api doesn't have request hydrator
     the response doesn't change"""
     g.test_authorized_for = []
-    res = client.post("/v0/acknowledge", json=post_json_data, headers={"slack_channel": "channel"})
+    res = client_without_request_hydrator.post("/v0/acknowledge", json=post_json_data, headers={"slack_channel": "channel"})
     assert '{"msg":"Thanks for acknowledging!","status":"ok"}' in res.data.decode("utf-8")
 
 
