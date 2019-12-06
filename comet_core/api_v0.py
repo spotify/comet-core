@@ -279,7 +279,7 @@ def get_events():
         fingerprint = get_and_check_fingerprint(validate_token=False)
         events = get_db().get_events_for_fingerprint(fingerprint)
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception("Got exception on get_issues.get_db().get_open_issues")
+        LOG.exception("Got exception on get_db().get_events_for_fingerprint")
         return jsonify({"status": "error", "msg": "get_events failed"}), 500
 
     return jsonify(events)
