@@ -277,12 +277,12 @@ def get_interactions():
         """
     try:
         fingerprint = get_and_check_fingerprint(validate_token=False)
-        events = get_db().get_interactions_fingerprint(fingerprint)
+        interactions = get_db().get_interactions_fingerprint(fingerprint)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception("Got exception on get_db().get_interactions_for_fingerprint")
         return jsonify({"status": "error", "msg": "get_interactions failed"}), 500
 
-    return jsonify(events)
+    return jsonify(interactions)
 
 
 # API ENDPOINTS
@@ -487,7 +487,7 @@ def get_issues():
     return jsonify(hydrated_issues)
 
 
-@bp.route("/events", methods=["GET"])
+@bp.route("/interactions", methods=["GET"])
 def get_interactions_get():
     """This endpoint expose the get_interactions functionality via GET request.
     Doesn't required authentication as the information returned is deemed not sensitive.
@@ -499,7 +499,7 @@ def get_interactions_get():
     return get_interactions()
 
 
-@bp.route("/events", methods=["POST"])
+@bp.route("/interactions", methods=["POST"])
 def get_interactions_post():
     """This endpoint expose the get_interactions functionality via POST request.
     Doesn't required authentication as the information returned is deemed not sensitive.
