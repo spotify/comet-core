@@ -14,9 +14,10 @@
 
 """Test api_helper module"""
 
+from unittest import mock
+
 import pytest
 from flask import g, Response
-from unittest import mock
 
 from comet_core.api import CometApi
 
@@ -330,3 +331,8 @@ def test_endpoint_post_no_request_hydrator(client_without_request_hydrator):
         "/v0/acknowledge", json=post_json_data, headers={"slack_channel": "channel"}
     )
     assert '{"msg":"Thanks for acknowledging!","status":"ok"}' in res.data.decode("utf-8")
+
+
+def test_endpoint_get_interactions(client):
+    res = client.post("/v0/interactions", json=post_json_data)
+    assert "[]" in res.data.decode("utf-8")

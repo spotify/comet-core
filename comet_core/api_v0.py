@@ -107,33 +107,42 @@ def assert_fingerprint_syntax(fingerprint):
         raise ValueError("fingerprint invalid: contains invalid characters")
 
 
-def get_and_check_fingerprint():
+def get_and_check_fingerprint(validate_token=True):
+
     """Reads the fingerprint from a POST request json data if it
     was a POST request, also checks its syntax.
     Also validate the token passed in the request
 
+    Args:
+        validate_token (bool): A parameter to validate the request token or not
     Raises:
         ValueError: if the POST request did not contain json data,
         or if the json data did not contain a fingerprint
-
+        RuntimeError: If the method is not POST or GET, throw and exception
     Returns:
         str: fingerprint
     """
+    fingerprint = None
+
+    valid_methods = ["POST", "GET"]
+    if request.method not in valid_methods:
+        raise RuntimeError(f"Unsupported method, only  {', '.join(valid_methods)} are supported.")
+
     if request.method == "POST":
         request_json = request.get_json()
         if not request_json:
             raise ValueError("No json data in post request.")
+
         if "fingerprint" not in request_json:
             raise ValueError("No fingerprint parameter in json data.")
-        if "token" not in request_json:
-            raise ValueError("No token parameter in json data.")
-
         fingerprint = request_json["fingerprint"]
-        token = request_json["token"]
-
         assert_fingerprint_syntax(fingerprint)
 
-        assert_valid_token(fingerprint, token)
+        if validate_token:
+            if "token" not in request_json:
+                raise ValueError("No token parameter in json data.")
+            token = request_json["token"]
+            assert_valid_token(fingerprint, token)
 
     if request.method == "GET":
         if "fp" not in request.args:
@@ -142,11 +151,11 @@ def get_and_check_fingerprint():
             raise ValueError("No token parameter in URL.")
 
         fingerprint = request.args["fp"]
-        token = request.args["t"]
-
         assert_fingerprint_syntax(fingerprint)
 
-        assert_valid_token(fingerprint, token)
+        if validate_token:
+            token = request.args["t"]
+            assert_valid_token(fingerprint, token)
 
     return fingerprint
 
@@ -265,6 +274,22 @@ def escalate():
         return action_failed("Escalation failed for some reason")
 
     return action_succeeded("Thanks! This alert has been escalated.")
+
+
+def get_interactions():
+    """Return a list of all the interactions for an associated fingerprint
+
+        Returns:
+            str: json list containing one dictionary for each event
+        """
+    try:
+        fingerprint = get_and_check_fingerprint(validate_token=False)
+        interactions = get_db().get_interactions_fingerprint(fingerprint)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception("Got exception on get_db().get_interactions_for_fingerprint")
+        return jsonify({"status": "error", "msg": "get_interactions failed"}), 500
+
+    return jsonify(interactions)
 
 
 # API ENDPOINTS
@@ -467,3 +492,27 @@ def get_issues():
         return jsonify({"status": "error", "msg": "hydrate_open_issues failed"}), 500
 
     return jsonify(hydrated_issues)
+
+
+@bp.route("/interactions", methods=["GET"])
+def get_interactions_get():
+    """This endpoint expose the get_interactions functionality via GET request.
+    Doesn't required authentication as the information returned is deemed not sensitive.
+    For details on the get_interactions function see :func:`~comet_core.api_v0.get_interactions`
+
+    Returns:
+        json: A json list containing a dictionary for each event
+    """
+    return get_interactions()
+
+
+@bp.route("/interactions", methods=["POST"])
+def get_interactions_post():
+    """This endpoint expose the get_interactions functionality via POST request.
+    Doesn't required authentication as the information returned is deemed not sensitive.
+    For details on the get_interactions function see :func:`~comet_core.api_v0.get_interactions`
+
+    Returns:
+        json: A json list containing a dictionary for each event
+    """
+    return get_interactions()
