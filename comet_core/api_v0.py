@@ -269,7 +269,7 @@ def escalate():
     return action_succeeded("Thanks! This alert has been escalated.")
 
 
-def get_events():
+def get_interactions():
     """Return a list of all the events for an associated fingerprint
 
         Returns:
@@ -277,10 +277,10 @@ def get_events():
         """
     try:
         fingerprint = get_and_check_fingerprint(validate_token=False)
-        events = get_db().get_events_for_fingerprint(fingerprint)
+        events = get_db().get_interactions_for_fingerprint(fingerprint)
     except Exception as _:  # pylint: disable=broad-except
-        LOG.exception("Got exception on get_db().get_events_for_fingerprint")
-        return jsonify({"status": "error", "msg": "get_events failed"}), 500
+        LOG.exception("Got exception on get_db().get_interactions_for_fingerprint")
+        return jsonify({"status": "error", "msg": "get_interactions failed"}), 500
 
     return jsonify(events)
 
@@ -488,24 +488,24 @@ def get_issues():
 
 
 @bp.route("/events", methods=["GET"])
-def get_events_get():
-    """This endpoint expose the get_events functionality via GET request.
+def get_interactions_get():
+    """This endpoint expose the get_interactions functionality via GET request.
     Doesn't required authentication as the information returned is deemed not sensitive.
-    For details on the get_events function see :func:`~comet_core.api_v0.get_events`
+    For details on the get_interactions function see :func:`~comet_core.api_v0.get_interactions`
 
     Returns:
         json: A json list containing a dictionary for each event
     """
-    return get_events()
+    return get_interactions()
 
 
 @bp.route("/events", methods=["POST"])
-def get_events_post():
-    """This endpoint expose the get_events functionality via POST request.
+def get_interactions_post():
+    """This endpoint expose the get_interactions functionality via POST request.
     Doesn't required authentication as the information returned is deemed not sensitive.
-    For details on the get_events function see :func:`~comet_core.api_v0.get_events`
+    For details on the get_interactions function see :func:`~comet_core.api_v0.get_interactions`
 
     Returns:
         json: A json list containing a dictionary for each event
     """
-    return get_events()
+    return get_interactions()

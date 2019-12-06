@@ -330,7 +330,6 @@ def test_endpoint_post_no_request_hydrator(client):
     assert '{"msg":"Thanks for acknowledging!","status":"ok"}' in res.data.decode("utf-8")
 
 
-def test_endpoint_get_events(client):
+def test_endpoint_get_interactions(client):
     res = client.post("/v0/events", json=post_json_data)
-    print(res.data.decode("utf-8"))
     assert "[]" in res.data.decode("utf-8")

@@ -500,7 +500,7 @@ def test_ignore_event_fingerprint_with_metadata(ds_instance):
     assert result.record_metadata == record_metadata
 
 
-def test_get_events_for_fingerprint(ds_instance):
+def test_get_interactions_for_fingerprint(ds_instance):
     one_a = IgnoreFingerprintRecord(
         id=1,
         fingerprint="f1",
@@ -517,5 +517,5 @@ def test_get_events_for_fingerprint(ds_instance):
     expected = [
         {"id": 1, "fingerprint": "f1", "ignore_type": "resolved", "reported_at": datetime(2019, 1, 1, 0, 0, 11)}
     ]
-    result = ds_instance.get_events_for_fingerprint(fingerprint)
+    result = ds_instance.get_interactions_for_fingerprint(fingerprint)
     assert result == expected
