@@ -270,14 +270,14 @@ def escalate():
 
 
 def get_interactions():
-    """Return a list of all the events for an associated fingerprint
+    """Return a list of all the interactions for an associated fingerprint
 
         Returns:
             str: json list containing one dictionary for each event
         """
     try:
         fingerprint = get_and_check_fingerprint(validate_token=False)
-        events = get_db().get_interactions_for_fingerprint(fingerprint)
+        events = get_db().get_interactions_fingerprint(fingerprint)
     except Exception as _:  # pylint: disable=broad-except
         LOG.exception("Got exception on get_db().get_interactions_for_fingerprint")
         return jsonify({"status": "error", "msg": "get_interactions failed"}), 500

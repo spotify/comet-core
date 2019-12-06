@@ -14,9 +14,10 @@
 
 """Test api_helper module"""
 
+from unittest import mock
+
 import pytest
 from flask import g, Response
-from unittest import mock
 
 from comet_core.api import CometApi
 

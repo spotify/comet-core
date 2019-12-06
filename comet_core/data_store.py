@@ -418,7 +418,7 @@ class DataStore:
         )
         return events_to_escalate
 
-    def get_interactions_for_fingerprint(self, fingerprint):
+    def get_interactions_fingerprint(self, fingerprint):
         """Return the list of all interactions associated with a fingerprint.
         Args:
             fingerprint (str): the fingerprint of the issue
@@ -430,6 +430,12 @@ class DataStore:
             self.session.query(IgnoreFingerprintRecord).filter(IgnoreFingerprintRecord.fingerprint == fingerprint).all()
         )
         return [
-            {"id": t.id, "fingerprint": t.fingerprint, "ignore_type": t.ignore_type, "reported_at": t.reported_at}
+            {
+                "id": t.id,
+                "fingerprint": t.fingerprint,
+                "ignore_type": t.ignore_type,
+                "reported_at": t.reported_at,
+                "expires_at": t.expires_at,
+            }
             for t in interactions
         ]

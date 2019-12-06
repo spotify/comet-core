@@ -17,16 +17,13 @@
 
 from datetime import datetime, timedelta
 
-import freezegun as freezegun
 import pytest
-
 from freezegun import freeze_time
-from freezegun.api import FakeDatetime
+from tests.utils import get_all_test_messages
 
 import comet_core.data_store
 from comet_core.data_store import remove_duplicate_events
 from comet_core.model import EventRecord, IgnoreFingerprintRecord
-from tests.utils import get_all_test_messages
 
 
 @pytest.fixture
@@ -511,11 +508,21 @@ def test_get_interactions_for_fingerprint(ds_instance):
     )
     fingerprint = "f1"
     ds_instance.ignore_event_fingerprint(
-        fingerprint, ignore_type=one_a.ignore_type, record_metadata=one_a.record_metadata, reported_at=one_a.reported_at
+        fingerprint,
+        ignore_type=one_a.ignore_type,
+        record_metadata=one_a.record_metadata,
+        reported_at=one_a.reported_at,
+        expires_at=one_a.expires_at,
     )
 
     expected = [
-        {"id": 1, "fingerprint": "f1", "ignore_type": "resolved", "reported_at": datetime(2019, 1, 1, 0, 0, 11)}
+        {
+            "id": 1,
+            "fingerprint": "f1",
+            "ignore_type": "resolved",
+            "reported_at": datetime(2019, 1, 1, 0, 0, 11),
+            "expires_at": datetime(2019, 1, 7, 0, 0, 11),
+        }
     ]
-    result = ds_instance.get_interactions_for_fingerprint(fingerprint)
+    result = ds_instance.get_interactions_fingerprint(fingerprint)
     assert result == expected
