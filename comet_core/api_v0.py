@@ -467,3 +467,20 @@ def get_issues():
         return jsonify({"status": "error", "msg": "hydrate_open_issues failed"}), 500
 
     return jsonify(hydrated_issues)
+
+
+@bp.route("/events")
+@requires_auth
+def get_events():
+    """Return a list of all the events for an associated fingerprint
+
+    Returns:
+        str: json list, containing one json dictionary for each event
+    """
+    try:
+        raw_events = get_db().get_events_for_fingerprint(g.authorized_for)
+    except Exception as _:  # pylint: disable=broad-except
+        LOG.exception("Got exception on get_issues.get_db().get_open_issues")
+        return jsonify({"status": "error", "msg": "get_open_issues failed"}), 500
+
+    return jsonify(raw_events)

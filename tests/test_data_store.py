@@ -17,9 +17,11 @@
 
 from datetime import datetime, timedelta
 
+import freezegun as freezegun
 import pytest
 
 from freezegun import freeze_time
+from freezegun.api import FakeDatetime
 
 import comet_core.data_store
 from comet_core.data_store import remove_duplicate_events
@@ -496,3 +498,22 @@ def test_ignore_event_fingerprint_with_metadata(ds_instance):
         .one_or_none()
     )
     assert result.record_metadata == record_metadata
+
+
+def test_get_events_for_fingerprint(ds_instance):
+    one_a = IgnoreFingerprintRecord(
+        id=1,
+        fingerprint="f1",
+        ignore_type="resolved",
+        reported_at=datetime(2019, 1, 1, 0, 0, 11),
+        expires_at=datetime(2019, 1, 7, 0, 0, 11),
+        record_metadata=None,
+    )
+    fingerprint = "f1"
+    ds_instance.ignore_event_fingerprint(
+        fingerprint, ignore_type=one_a.ignore_type, record_metadata=one_a.record_metadata, reported_at=one_a.reported_at
+    )
+
+    expected = [{"id": 1, "fingerprint": "f1", "ignore_type": "resolved", "reported_at": datetime(2019, 1, 1, 0, 0, 11)}]
+    result = ds_instance.get_events_for_fingerprint(fingerprint)
+    assert result == expected
