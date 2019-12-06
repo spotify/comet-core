@@ -108,6 +108,7 @@ def assert_fingerprint_syntax(fingerprint):
 
 
 def get_and_check_fingerprint(validate_token=True):
+
     """Reads the fingerprint from a POST request json data if it
     was a POST request, also checks its syntax.
     Also validate the token passed in the request
@@ -117,11 +118,16 @@ def get_and_check_fingerprint(validate_token=True):
     Raises:
         ValueError: if the POST request did not contain json data,
         or if the json data did not contain a fingerprint
-
+        RuntimeError: If the method is not POST or GET, throw and exception
     Returns:
         str: fingerprint
     """
     fingerprint = None
+
+    valid_methods = ["POST", "GET"]
+    if request.method not in valid_methods:
+        raise RuntimeError(f"Unsupported method, only  {', '.join(valid_methods)} are supported.")
+
     if request.method == "POST":
         request_json = request.get_json()
         if not request_json:
