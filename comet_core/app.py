@@ -541,13 +541,15 @@ class Comet:
             self.data_store.update_event_escalated_at_to_now(needs_escalation_events)
 
     # pylint: disable=unused-argument
-    def stop(self, *args):
+    def stop(self, signum = 0, frame = None):
         """Stops all inputs.
 
         Args:
             *args (list): dummy args to allow function to be called from a signal
         """
+        LOG.info(f'Received stop signal {signum}')
         for instance in self.instantiated_inputs:
+            LOG.info(f'Stopping instance {instance}')
             instance.stop()
         self.running = False
 

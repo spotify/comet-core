@@ -3,6 +3,9 @@
 .project
 .pydevproject
 
+# Pip
+pip-wheel-metadata/*
+
 # IntelliJ
 .idea
 
@@ -110,7 +113,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-dev-env/
 
 # Spyder project settings
 .spyderproject
