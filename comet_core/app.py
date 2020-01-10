@@ -17,9 +17,10 @@ import logging
 import signal
 import time
 from datetime import datetime, timedelta
+
 from comet_core.data_store import DataStore
-from comet_core.model import EventRecord
 from comet_core.fingerprint import comet_event_fingerprint
+from comet_core.model import EventRecord
 
 LOG = logging.getLogger(__name__)
 
@@ -540,16 +541,16 @@ class Comet:
 
             self.data_store.update_event_escalated_at_to_now(needs_escalation_events)
 
-    # pylint: disable=unused-argument
-    def stop(self, signum = 0, frame = None):
+    def stop(self, signum=0, frame=None):  # pylint: disable=unused-argument
         """Stops all inputs.
 
         Args:
-            *args (list): dummy args to allow function to be called from a signal
+            signum (int): Signal that is stopping the function.
+            frame (frame or None): See Signal module documentation.
         """
-        LOG.info(f'Received stop signal {signum}')
+        LOG.info(f"Received stop signal {signum}")  # pylint: disable=logging-format-interpolation
         for instance in self.instantiated_inputs:
-            LOG.info(f'Stopping instance {instance}')
+            LOG.info(f"Stopping instance {instance}")  # pylint: disable=logging-format-interpolation
             instance.stop()
         self.running = False
 
