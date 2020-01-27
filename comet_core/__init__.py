@@ -18,9 +18,11 @@ __author__ = "Spotify Security Wasabi team <wasabi@spotify.com>"
 __all__ = ["Comet"]
 
 import logging
+
 from pythonjsonlogger import jsonlogger
 
 from comet_core.app import Comet
+from comet_core.exceptions import CometAlertException, CometBaseException, CometCouldNotSendException
 
 # pylint: disable=invalid-name
 
