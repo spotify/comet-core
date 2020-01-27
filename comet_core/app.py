@@ -19,6 +19,7 @@ import time
 from datetime import datetime, timedelta
 
 from comet_core.data_store import DataStore
+from comet_core.exceptions import CometCouldNotSendException
 from comet_core.fingerprint import comet_event_fingerprint
 from comet_core.model import EventRecord
 
@@ -449,12 +450,16 @@ class Comet:
             # (where X is `owner_reminder_cadence`, default 7 days)
             for owner, events in events_by_owner.items():
                 owner_reminder_cadence = source_type_config["owner_reminder_cadence"]
+
                 if any([event.new for event in events]) or self.data_store.check_any_issue_needs_reminder(
                     owner_reminder_cadence, events
                 ):
-                    self._route_events(owner, events, source_type)
+                    try:
+                        self._route_events(owner, events, source_type)
+                        self.data_store.update_processed_at_timestamp_to_now(events)
+                    except CometCouldNotSendException:
+                        LOG.error(f"Could not send alert to {owner}: {events}")
 
-                self.data_store.update_processed_at_timestamp_to_now(events)
                 LOG.info("events-processed", extra={"events": len(events), "source-type": source_type, "owner": owner})
 
             # Check if any of the events for this source_type needs

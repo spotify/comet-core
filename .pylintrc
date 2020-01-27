@@ -69,7 +69,8 @@ disable=no-name-in-module,
         locally-enabled,
         too-few-public-methods,
         inconsistent-return-statements,
-        bad-continuation
+        bad-continuation,
+        logging-format-interpolation
 
 [REPORTS]
 
