@@ -521,8 +521,11 @@ class Comet:
         """
         if real_time_events_by_owner:
             for owner, events in real_time_events_by_owner.items():
-                self._route_events(owner, events, source_type)
-                self.data_store.update_processed_at_timestamp_to_now(events)
+                try:
+                    self._route_events(owner, events, source_type)
+                    self.data_store.update_processed_at_timestamp_to_now(events)
+                except CometCouldNotSendException:
+                    LOG.error(f"Could not send alert to {owner}: {events}")
 
     def _handle_events_need_escalation(self, source_type, needs_escalation_events):
         """Handle events need escalation by getting the escalate
