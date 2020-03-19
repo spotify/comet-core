@@ -15,7 +15,6 @@
 """Data Store module - interface to database."""
 
 from datetime import datetime, timedelta
-from itertools import tee, islice, chain
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -34,14 +33,14 @@ def remove_duplicate_events(event_record_list):
     Returns:
         list: of EventRecords with extra fingerprints removed
     """
-    d = {}
+    events_hash_table = {}
     for e in event_record_list:
-        if e.fingerprint in d:
-            if d[e.fingerprint].received_at < e.received_at:
-                d[e.fingerprint] = e
+        if e.fingerprint in events_hash_table:
+            if events_hash_table[e.fingerprint].received_at < e.received_at:
+                events_hash_table[e.fingerprint] = e
         else:
-            d[e.fingerprint] = e
-    return list(d.values())
+            events_hash_table[e.fingerprint] = e
+    return list(events_hash_table.values())
 
 
 class DataStore:
