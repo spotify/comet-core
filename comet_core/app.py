@@ -459,6 +459,8 @@ class Comet:
                         self.data_store.update_processed_at_timestamp_to_now(events)
                     except CometCouldNotSendException:
                         LOG.error(f"Could not send alert to {owner}: {events}")
+                else:
+                    self.data_store.update_processed_at_timestamp_to_now(events)
 
                 LOG.info("events-processed", extra={"events": len(events), "source-type": source_type, "owner": owner})
 

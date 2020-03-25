@@ -96,6 +96,20 @@ def test_process_unprocessed_events():
     assert router.call_args[0][2][0].owner == check_user
     assert escalator.call_count == 3
 
+    app.data_store.add_record(
+        EventRecord(
+            id=5,
+            received_at=datetime.utcnow() - timedelta(days=2),
+            source_type="datastoretest",
+            owner=check_user,
+            data={},
+            fingerprint="f4",
+        )
+    )
+    app.process_unprocessed_events()
+    assert app.data_store.get_latest_event_with_fingerprint('f4').processed_at
+
+
 
 def test_event_container():
     container = EventContainer("test", {})
