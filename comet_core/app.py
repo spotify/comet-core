@@ -161,6 +161,7 @@ class Comet:
             "owner_reminder_cadence": timedelta(days=7),
             "escalation_time": timedelta(seconds=10),
             "escalation_reminder_cadence": timedelta(days=7),
+            "communication_digest_mode": True,
         }
         self.specific_configs = {}
 
@@ -377,7 +378,7 @@ class Comet:
 
         self.escalators.add(source_types, func)
 
-    #  pylint: disable=too-many-branches
+    #  pylint: disable=too-many-branches, too-many-locals, too-many-nested-blocks, too-many-statements
     def process_unprocessed_events(self):
         """Checks the database for unprocessed events and processes them.
 
@@ -400,7 +401,7 @@ class Comet:
 
         # pylint: disable=consider-iterating-dictionary
         for source_type in self.parsers.keys():
-            source_type_config = self.batch_config
+            source_type_config = self.batch_config.copy()
             if source_type in self.specific_configs:
                 source_type_config.update(self.specific_configs[source_type])
 
@@ -451,16 +452,33 @@ class Comet:
             for owner, events in events_by_owner.items():
                 owner_reminder_cadence = source_type_config["owner_reminder_cadence"]
 
-                if any([event.new for event in events]) or self.data_store.check_any_issue_needs_reminder(
-                    owner_reminder_cadence, events
-                ):
-                    try:
-                        self._route_events(owner, events, source_type)
-                        self.data_store.update_processed_at_timestamp_to_now(events)
-                    except CometCouldNotSendException:
-                        LOG.error(f"Could not send alert to {owner}: {events}")
+                events_to_remind = []
+                if source_type_config["communication_digest_mode"]:
+                    if any([event.new for event in events]) or self.data_store.check_any_issue_needs_reminder(
+                        owner_reminder_cadence, events
+                    ):
+                        events_to_remind = events
                 else:
-                    self.data_store.update_processed_at_timestamp_to_now(events)
+                    fingerprints_to_remind = self.data_store.get_any_issues_need_reminder(
+                        owner_reminder_cadence, events
+                    )
+                    if fingerprints_to_remind:
+                        for e in events:
+                            if e.fingerprint in fingerprints_to_remind:
+                                e.reminder = True
+                                events_to_remind.append(e)
+
+                    for e in events:
+                        if e.new and not e.fingerprint in fingerprints_to_remind:
+                            events_to_remind.append(e)
+
+                if events_to_remind:
+                    try:
+                        self._route_events(owner, events_to_remind, source_type)
+                    except CometCouldNotSendException:
+                        LOG.error(f"Could not send alert to {owner}: {events_to_remind}")
+
+                self.data_store.update_processed_at_timestamp_to_now(events)
 
                 LOG.info("events-processed", extra={"events": len(events), "source-type": source_type, "owner": owner})
 
