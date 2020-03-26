@@ -155,13 +155,25 @@ class Comet:
 
         self.database_uri = database_uri
         self.batch_config = {
-            "wait_for_more": timedelta(seconds=3),
-            "max_wait": timedelta(seconds=4),
-            "new_threshold": timedelta(days=7),
-            "owner_reminder_cadence": timedelta(days=7),
-            "escalation_time": timedelta(seconds=10),
-            "escalation_reminder_cadence": timedelta(days=7),
             "communication_digest_mode": True,
+            # By default (communication_digest_mode=True), all batch events will be grouped by an owner and source_type.
+            # And email will look like:
+            #  here are your X new issues, and by the way, you have these Y old ones.
+            # In case of the non-digest mode,
+            # the router will receive only these events that are new or need a reminder.
+            "escalation_reminder_cadence": timedelta(days=7),
+            # `escalation_reminder_cadence` defines how often to send escalation reminders
+            "escalation_time": timedelta(seconds=10),
+            # `escalation_time` defines how soon event should be escalated (it takes ignore_fingerprints into account)
+            "max_wait": timedelta(seconds=4),
+            # `max_wait` defines the amount of time to wait since the earliest event in an attempt to catch whole batch
+            "new_threshold": timedelta(days=7),
+            # `new_threshold` defines amount of time to wait since the latest report of the given fingerprint to assume
+            # it as a regression of the detected issue
+            "owner_reminder_cadence": timedelta(days=7),
+            # `owner_reminder_cadence` defines how often to send reminders
+            "wait_for_more": timedelta(seconds=3),
+            # `wait_for_more` defines the amount of time to wait since the latest event
         }
         self.specific_configs = {}
 
@@ -388,15 +400,15 @@ class Comet:
         same escalation recipient recently. All ignored events will be skipped for the above, but marked as processed.
 
         Config options we care about:
-            source_type_config['owner_reminder_cadence']:
-            source_type_config['notifications_send_emails']
+            source_type_config['communication_digest_mode'],
+            source_type_config['escalation_reminder_cadence'],
             source_type_config['escalation_time'],
-            source_type_config['escalation_reminder_cadence']
-            source_type_config['recipient_override']
-            source_type_config['email_subject']:
-            source_type_config['wait_for_more']:
-            source_type_config['max_wait']:
+            source_type_config['max_wait'],
+            source_type_config['new_threshold'],
+            source_type_config['owner_reminder_cadence'],
+            source_type_config['wait_for_more']
         """
+
         LOG.debug("Processing unprocessed events")
 
         # pylint: disable=consider-iterating-dictionary
@@ -475,10 +487,11 @@ class Comet:
                 if events_to_remind:
                     try:
                         self._route_events(owner, events_to_remind, source_type)
+                        self.data_store.update_processed_at_timestamp_to_now(events_to_remind)
                     except CometCouldNotSendException:
                         LOG.error(f"Could not send alert to {owner}: {events_to_remind}")
 
-                self.data_store.update_processed_at_timestamp_to_now(events)
+                self.data_store.update_processed_at_timestamp_to_now([e for e in events if e not in events_to_remind])
 
                 LOG.info("events-processed", extra={"events": len(events), "source-type": source_type, "owner": owner})
 
