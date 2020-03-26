@@ -15,7 +15,6 @@
 """Data Store module - interface to database."""
 
 from datetime import datetime, timedelta
-from itertools import tee, islice, chain
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -26,20 +25,6 @@ from comet_core.model import BaseRecord, EventRecord, IgnoreFingerprintRecord
 Session = sessionmaker(autocommit=True)  # pylint: disable=invalid-name
 
 
-def now_and_next(some_iterable):
-    """
-    get an iterator in a nice itertools way so we can act on the list as we remove args
-    Args:
-        some_iterable (iterable): any iterable list
-
-    Returns:
-        tuple: tuple of two items in a row
-    """
-    items, nexts = tee(some_iterable, 2)
-    nexts = chain(islice(nexts, 1, None), [None])
-    return zip(items, nexts)
-
-
 def remove_duplicate_events(event_record_list):
     """
     This removes duplicates based on fingerprint and chooses the newest issue
@@ -48,11 +33,14 @@ def remove_duplicate_events(event_record_list):
     Returns:
         list: of EventRecords with extra fingerprints removed
     """
-    event_record_list = sorted(event_record_list, key=lambda x: (x.fingerprint, x.received_at))
-    for issue_1, issue_2 in now_and_next(event_record_list):
-        if issue_1 and issue_2 and issue_1.fingerprint == issue_2.fingerprint:
-            event_record_list.remove(issue_1)
-    return event_record_list
+    events_hash_table = {}
+    for e in event_record_list:
+        if e.fingerprint in events_hash_table:
+            if events_hash_table[e.fingerprint].received_at < e.received_at:
+                events_hash_table[e.fingerprint] = e
+        else:
+            events_hash_table[e.fingerprint] = e
+    return list(events_hash_table.values())
 
 
 class DataStore:  # pylint: disable=too-many-public-methods
