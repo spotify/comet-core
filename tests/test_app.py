@@ -200,7 +200,7 @@ def test_process_unprocessed_events_non_digest_mode():
     assert app.data_store.get_latest_event_with_fingerprint("f7").processed_at
     assert router.call_count == before_calling + 1
 
-    sent_fingerprints = [e.fingerprint for e in router.call_args.args[2]]
+    sent_fingerprints = [e.fingerprint for e in router.call_args[0][2]]
     assert "f5" in sent_fingerprints
     assert "f6" in sent_fingerprints
     assert "f7" not in sent_fingerprints

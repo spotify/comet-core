@@ -55,7 +55,7 @@ def remove_duplicate_events(event_record_list):
     return event_record_list
 
 
-class DataStore: # pylint: disable=too-many-public-methods
+class DataStore:  # pylint: disable=too-many-public-methods
     """Abstraction of the comet storage layer.
 
     Args:
