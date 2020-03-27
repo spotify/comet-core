@@ -25,13 +25,13 @@ from comet_core.app import EventContainer
 from comet_core.model import EventRecord, IgnoreFingerprintRecord
 
 
-@freeze_time("2018-05-09 09:00:00")
 # pylint: disable=missing-docstring
-def test_process_unprocessed_events():
+def test_process_unprocessed_events_digest_mode():
     app = Comet()
     app.register_parser("datastoretest", json)
     app.register_parser("datastoretest2", json)
     app.register_parser("datastoretest3", json)
+    app.register_parser("datastoretest4", json)
 
     app.set_config("datastoretest2", {})
 
@@ -91,10 +91,119 @@ def test_process_unprocessed_events():
     )
 
     app.process_unprocessed_events()
+
+    # it is expected to have specific_router called once for the datastoretest2
     assert specific_router.call_count == 1
+    # it is expected to have two calls of the generic router for the source_type datastoretest2 and datastoretest3
     assert router.call_count == 2
+    # and the user must be check_user
     assert router.call_args[0][2][0].owner == check_user
+    # due to the default escalation_time=10seconds, all three events (id=2,3,4) must be escalated
     assert escalator.call_count == 3
+
+    app.data_store.add_record(
+        EventRecord(
+            id=5,
+            received_at=datetime.utcnow() - timedelta(days=2),
+            source_type="datastoretest",
+            owner=check_user,
+            data={},
+            fingerprint="f1",
+        )
+    )
+    app.process_unprocessed_events()
+
+    # f1 is expected to be processed, but not sent out
+    assert app.data_store.get_latest_event_with_fingerprint("f1").processed_at
+    assert not app.data_store.get_latest_event_with_fingerprint("f1").sent_at
+
+
+# pylint: disable=missing-docstring
+def test_process_unprocessed_events_non_digest_mode():
+    app = Comet()
+    app.register_parser("datastoretest4", json)
+
+    check_user = "an_owner"
+    router = mock.Mock()
+    escalator = mock.Mock()
+    app.register_router(func=router)
+    app.register_escalator(func=escalator)
+
+    app.set_config("datastoretest4", {"communication_digest_mode": False, "new_threshold": timedelta(days=14)})
+
+    app.data_store.add_record(
+        EventRecord(
+            id=6,
+            received_at=datetime.utcnow() - timedelta(days=8),
+            source_type="datastoretest4",
+            sent_at=datetime.utcnow() - timedelta(days=8),
+            processed_at=datetime.utcnow() - timedelta(days=8),
+            owner=check_user,
+            data={},
+            fingerprint="f5",
+        )
+    )
+
+    app.data_store.add_record(
+        EventRecord(
+            id=7,
+            received_at=datetime.utcnow() - timedelta(days=2),
+            source_type="datastoretest4",
+            owner=check_user,
+            data={},
+            fingerprint="f5",
+        )
+    )
+
+    app.data_store.add_record(
+        EventRecord(
+            id=8,
+            received_at=datetime.utcnow(),
+            source_type="datastoretest4",
+            owner=check_user,
+            data={},
+            fingerprint="f6",
+        )
+    )
+
+    app.data_store.add_record(
+        EventRecord(
+            id=9,
+            received_at=datetime.utcnow() - timedelta(days=2),
+            source_type="datastoretest4",
+            sent_at=datetime.utcnow() - timedelta(days=2),
+            processed_at=datetime.utcnow() - timedelta(days=2),
+            owner=check_user,
+            data={},
+            fingerprint="f7",
+        )
+    )
+
+    app.data_store.add_record(
+        EventRecord(
+            id=10,
+            received_at=datetime.utcnow(),
+            source_type="datastoretest4",
+            owner=check_user,
+            data={},
+            fingerprint="f7",
+        )
+    )
+
+    # f5 is expected to be reminded
+    # f6 is expected to be new and sent as well
+    # f7 is NOT expected to be reminded
+    before_calling = router.call_count
+    app.process_unprocessed_events()
+    assert app.data_store.get_latest_event_with_fingerprint("f5").processed_at
+    assert app.data_store.get_latest_event_with_fingerprint("f6").processed_at
+    assert app.data_store.get_latest_event_with_fingerprint("f7").processed_at
+    assert router.call_count == before_calling + 1
+
+    sent_fingerprints = [e.fingerprint for e in router.call_args[0][2]]
+    assert "f5" in sent_fingerprints
+    assert "f6" in sent_fingerprints
+    assert "f7" not in sent_fingerprints
 
 
 def test_event_container():

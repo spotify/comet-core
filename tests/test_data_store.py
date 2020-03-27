@@ -163,6 +163,61 @@ def test_update_processed_at_timestamp_to_now(data_store_with_test_events):
     assert isinstance(record.processed_at, datetime)
 
 
+def test_get_any_issues_need_reminder():
+    data_store = comet_core.data_store.DataStore("sqlite://")
+
+    test_fingerprint1 = "f1"
+    test_fingerprint2 = "f2"
+    test_fingerprint3 = "f3"
+
+    one_a = EventRecord(sent_at=datetime.utcnow() - timedelta(days=9), source_type="datastoretest")
+    one_a.fingerprint = test_fingerprint1
+    one_b = EventRecord(sent_at=datetime.utcnow() - timedelta(days=3), source_type="datastoretest")
+    one_b.fingerprint = test_fingerprint1
+
+    two_a = EventRecord(sent_at=datetime.utcnow() - timedelta(days=10), source_type="datastoretest")
+    two_a.fingerprint = test_fingerprint2
+    two_b = EventRecord(sent_at=datetime.utcnow() - timedelta(days=8), source_type="datastoretest")
+    two_b.fingerprint = test_fingerprint2
+
+    two_c = EventRecord(source_type="datastoretest")  # sent_at NULL
+    two_c.fingerprint = test_fingerprint2
+
+    three_a = EventRecord(source_type="datastoretest")  # sent_at NULL
+    three_a.fingerprint = test_fingerprint3
+
+    data_store.add_record(one_a)
+    data_store.add_record(two_a)
+    data_store.add_record(two_b)
+    data_store.add_record(two_c)
+    data_store.add_record(three_a)
+
+    # issue \ time --->
+    #   1 --------a------|-------------->
+    #   2 ----a-------b--|--------------> (2c sent_at == NULL)
+    #   3 ---------------|--------------> (3a sent_at == NULL)
+    #                    ^
+    #                 -7days
+
+    result = data_store.get_any_issues_need_reminder(timedelta(days=7), [one_a, two_a, three_a])
+    assert len(result) == 2
+    assert test_fingerprint2 in result
+    assert test_fingerprint1 in result
+
+    data_store.add_record(one_b)
+
+    # issue \ time --->
+    #   1 --------a------|-----b-------->
+    #   2 ----a-------b--|--------------> (2c sent_at == NULL)
+    #   3 ---------------|--------------> (3a sent_at == NULL)
+    #                    ^
+    #                 -7days
+
+    result = data_store.get_any_issues_need_reminder(timedelta(days=7), [one_a, two_a, three_a])
+    assert len(result) == 1
+    assert test_fingerprint2 in result
+
+
 def test_check_any_issue_needs_reminder():
     data_store = comet_core.data_store.DataStore("sqlite://")
 

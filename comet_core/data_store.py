@@ -43,7 +43,7 @@ def remove_duplicate_events(event_record_list):
     return list(events_hash_table.values())
 
 
-class DataStore:
+class DataStore:  # pylint: disable=too-many-public-methods
     """Abstraction of the comet storage layer.
 
     Args:
@@ -155,6 +155,32 @@ class DataStore:
         if timestamps:
             return max(timestamps)[0] <= datetime.utcnow() - search_timedelta
         return False
+
+    def get_any_issues_need_reminder(self, search_timedelta, records):
+        """Returns all the `fingerprints` having corresponding `event` table entries with the latest `sent_at`
+        more then search_timedelta ago.
+        NOTE: if all database records for a fingerprint given in the `records` list have the sent_at values set to Null,
+              then this fingerprint will be treated as NOT needing a reminder, which might be unintuitive.
+        Args:
+            search_timedelta (datetime.timedelta): reminder interval
+            records (list): list of EventRecord objects to check
+        Returns:
+            list: list of fingerprints that represent issues that need to be reminded about
+        """
+        fingerprints = [record.fingerprint for record in records]
+        fingerprints_to_remind = (
+            self.session.query(func.max(EventRecord.sent_at).label("sent_at"), EventRecord.fingerprint)
+            .filter(EventRecord.fingerprint.in_(fingerprints) & EventRecord.sent_at.isnot(None))
+            .group_by(EventRecord.fingerprint)
+            .all()
+        )
+        result = []
+        deltat = datetime.utcnow() - search_timedelta
+        for f in fingerprints_to_remind:
+            if f.sent_at <= deltat:
+                result.append(f.fingerprint)
+
+        return result
 
     def update_timestamp_column_to_now(self, records, column_name):
         """Update the `column_name` of the provided `EventRecord`s to datetime now
