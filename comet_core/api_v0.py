@@ -495,6 +495,7 @@ def get_issues():
 
 
 @bp.route("/interactions", methods=["GET"])
+@requires_auth
 def get_interactions_get():
     """This endpoint expose the get_interactions functionality via GET request.
     Doesn't required authentication as the information returned is deemed not sensitive.
@@ -507,6 +508,7 @@ def get_interactions_get():
 
 
 @bp.route("/interactions", methods=["POST"])
+@requires_auth
 def get_interactions_post():
     """This endpoint expose the get_interactions functionality via POST request.
     Doesn't required authentication as the information returned is deemed not sensitive.
