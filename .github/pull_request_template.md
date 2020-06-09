@@ -11,3 +11,5 @@
 - [ ] Changes are covered by tests.
 - [ ] Documentation has been updated with the new changes.
 - [ ] Readme is still relevant after the changes has been introduced.
+- [ ] Library version is updated in `setup.py`.  
+      _Required to make a new release._
