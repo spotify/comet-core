@@ -589,9 +589,9 @@ class Comet:
             signum (int): Signal that is stopping the function.
             frame (frame or None): See Signal module documentation.
         """
-        LOG.info(f"Received stop signal {signum}")  # pylint: disable=logging-format-interpolation
+        LOG.info(f"Received stop signal {signum}")
         for instance in self.instantiated_inputs:
-            LOG.info(f"Stopping instance {instance}")  # pylint: disable=logging-format-interpolation
+            LOG.info(f"Stopping instance {instance}")
             instance.stop()
         self.running = False
 

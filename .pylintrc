@@ -70,8 +70,8 @@ disable=no-name-in-module,
         too-few-public-methods,
         inconsistent-return-statements,
         bad-continuation,
-        logging-format-interpolation
-
+        logging-format-interpolation,
+        logging-fstring-interpolation
 [REPORTS]
 
 # Set the output format. Available formats are text, parseable, colorized, msvs
