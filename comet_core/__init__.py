@@ -24,8 +24,6 @@ from pythonjsonlogger import jsonlogger
 from comet_core.app import Comet
 from comet_core.exceptions import CometAlertException, CometBaseException, CometCouldNotSendException
 
-# pylint: disable=invalid-name
-
 root_logger = logging.getLogger()
 
 stderr_handler = logging.StreamHandler()

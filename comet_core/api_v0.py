@@ -31,7 +31,7 @@ from comet_core.api_helper import (
 )
 from comet_core.model import IgnoreFingerprintRecord
 
-bp = Blueprint("v0", __name__, url_prefix="/v0")  # pylint: disable=invalid-name
+bp = Blueprint("v0", __name__, url_prefix="/v0")
 LOG = logging.getLogger(__name__)
 
 

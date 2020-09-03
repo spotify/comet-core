@@ -1,8 +1,6 @@
-black==19.3b0
-coverage==4.5.4
-pycodestyle==2.5.0
-pytest==5.2.1
-pytest-cov==2.8.1
-pytest-freezegun==0.3.0.post1
-tox==2.9.1
-pylint==2.4.3
+black
+pytest
+pytest-cov
+pytest-freezegun
+tox
+pylint

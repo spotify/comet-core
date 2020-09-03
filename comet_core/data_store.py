@@ -14,6 +14,9 @@
 
 """Data Store module - interface to database."""
 
+# pylint: disable=no-member
+# See: https://github.com/PyCQA/pylint/issues/3610
+
 from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine
@@ -22,7 +25,7 @@ from sqlalchemy.sql.expression import func
 
 from comet_core.model import BaseRecord, EventRecord, IgnoreFingerprintRecord
 
-Session = sessionmaker(autocommit=True)  # pylint: disable=invalid-name
+Session = sessionmaker(autocommit=True)
 
 
 def remove_duplicate_events(event_record_list):
