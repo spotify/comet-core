@@ -95,8 +95,8 @@ def test_hello(client):  # pylint: disable=missing-param-doc,missing-type-doc,re
 
 # pylint: disable=missing-param-doc,missing-type-doc,redefined-outer-name
 def test_get_issues(client, test_db):
-    """"Feed all test messages to the get_issues function
-     to see that they get rendered correctly"""
+    """ "Feed all test messages to the get_issues function
+    to see that they get rendered correctly"""
     g.user = "testuser"
     with mock.patch("comet_core.api_v0.get_db", return_value=test_db):
         g.test_authorized_for = ["non@existant.com"]
@@ -175,7 +175,7 @@ def test_resolve(client):
 
 def test_resolve_no_token_passed(client):
     """Test the resolve endpoint fails when
-       the token is not passed in the args"""
+    the token is not passed in the args"""
     g.test_authorized_for = []
     res = client.get("/v0/resolve?fp=splunk_kjsdkjfskdfhskjdf")
     assert res.status == "500 INTERNAL SERVER ERROR"
@@ -204,7 +204,7 @@ def test_falsepositive(client):
 
 def test_falsepositive_no_token_passed(client):
     """Test the falsepositive endpoint fails when
-       the token is not passed in the args"""
+    the token is not passed in the args"""
     g.test_authorized_for = []
     res = client.get("/v0/falsepositive?fp=splunk_82998ef6bb3db9dff3dsfdsfsdc")
     assert res.status == "500 INTERNAL SERVER ERROR"
@@ -254,7 +254,7 @@ def test_acknowledge(client):
 
 def test_acknowledge_hmac_validation_failed(client):
     """Test the acknowledge endpoint fails when the fingerprint
-       doesn't match the token passed"""
+    doesn't match the token passed"""
     res = client.get(
         "/v0/acknowledge?fp=splunk_82998ef6bb3db9dff3dsfdsfsdc" "&t=97244b15a21f45e002b2e913866ff7545510f9b08dea5241f"
     )

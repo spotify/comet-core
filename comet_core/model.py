@@ -129,8 +129,7 @@ class EventRecord(BaseRecord):
 
 
 class IgnoreFingerprintRecord(BaseRecord):
-    """Acceptedrisk model.
-    """
+    """Acceptedrisk model."""
 
     __tablename__ = "ignore_fingerprint"
     id = Column(Integer, primary_key=True)
