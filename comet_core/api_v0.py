@@ -279,9 +279,9 @@ def escalate():
 def get_interactions():
     """Return a list of all the interactions for an associated fingerprint
 
-        Returns:
-            str: json list containing one dictionary for each event
-        """
+    Returns:
+        str: json list containing one dictionary for each event
+    """
     try:
         fingerprint = get_and_check_fingerprint(validate_token=False)
         interactions = get_db().get_interactions_fingerprint(fingerprint)
@@ -299,8 +299,8 @@ def get_interactions():
 def health_check():
     """Can be called by e.g. Kubernetes to verify that the API is up
 
-     Returns:
-        str: the static string "Comet-API", could be anything
+    Returns:
+       str: the static string "Comet-API", could be anything
     """
     return "Comet-API-v0"
 
@@ -309,8 +309,8 @@ def health_check():
 def dbhealth_check():
     """Can be called by e.g. Kubernetes to verify that the API is up and is able to query DB
 
-     Returns:
-        str: the static string "Comet-API", could be anything
+    Returns:
+       str: the static string "Comet-API", could be anything
     """
     try:
         get_db().get_latest_event_with_fingerprint("xxx")
