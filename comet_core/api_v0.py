@@ -18,16 +18,16 @@ Can be used by GET response links in email messages or form POST requests from a
 
 import logging
 import re
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
-from flask import Blueprint, g, jsonify, request, render_template_string
+from flask import Blueprint, g, jsonify, render_template_string, request
 
 from comet_core.api_helper import (
-    hydrate_open_issues,
-    get_db,
-    requires_auth,
     assert_valid_token,
+    get_db,
+    hydrate_open_issues,
     hydrate_with_request_headers,
+    requires_auth,
 )
 from comet_core.model import IgnoreFingerprintRecord
 
@@ -51,11 +51,7 @@ def action_succeeded(message=None, status_code=200):
             response["msg"] = message
         return jsonify(response), status_code
 
-    template = (
-        "<h2>{{ message }}</h2> "
-        "<p>Note: This feature is still early in development, "
-        "please reach out to Security if you have any feedback.</p>"
-    )
+    template = "<h2>{{ message }}</h2>"
     return render_template_string(template, message=message), status_code
 
 
@@ -75,12 +71,8 @@ def action_failed(message=None, status_code=500):
             response["message"] = message
         return jsonify(response), status_code
 
-    template = (
-        "<h2>Something went wrong: {{ message }}</h2> "
-        "<p>Please complete the action by emailing to Security.</p>"
-        "<p>Note: This feature is still early in development, "
-        "please reach out to Security if you have any feedback.</p>"
-    )
+    template = "<h2>Something went wrong: {{ message }}</h2><p>Please complete the action by reach out to Security.</p>"
+
     return render_template_string(template, message=message), status_code
 
 
