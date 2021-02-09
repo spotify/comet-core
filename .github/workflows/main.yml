@@ -57,6 +57,6 @@ jobs:
           python -m twine upload --skip-existing dist/*
         shell: bash
         env:
-          TWINE_REPOSITORY_URL: "https://test.pypi.org"
+          TWINE_REPOSITORY_URL: "https://test.pypi.org/legacy/."
           TWINE_USERNAME: "__token__"
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
