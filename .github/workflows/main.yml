@@ -1,11 +1,13 @@
 name: comet-core CI
 
 on:
-  # Triggers the workflow on all push events and pull request events for the master branch
+  # Trigger the workflow on all push, pull request for the master branch and release events
   push:
   pull_request:
     branches: [ master ]
-    types: [opened]
+    types: [closed]
+  release:
+    type: [published]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
