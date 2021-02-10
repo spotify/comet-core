@@ -7,7 +7,7 @@ on:
     branches: [ master ]
     types: [closed]
   release:
-    type: [published]
+    types: [published]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -61,6 +61,6 @@ jobs:
           python -m twine upload --skip-existing dist/*
         shell: bash
         env:
-          TWINE_REPOSITORY_URL: "https://pypi.org/legacy/"
+          TWINE_REPOSITORY_URL: "https://upload.pypi.org/legacy/"
           TWINE_USERNAME: "__token__"
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
