@@ -21,7 +21,7 @@ jobs:
       matrix:
         python: [3.6, 3.7, 3.8, 3.9]
         include: # define single matrix case that performs the upload
-          - os: ubuntu-latess
+          - os: ubuntu-latest
             python: 3.6
             upload: true
     steps:
