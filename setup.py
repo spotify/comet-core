@@ -16,7 +16,7 @@ import setuptools
 
 setuptools.setup(
     name="comet-core",
-    version="2.8.0",
+    version="2.8.1",
     url="https://github.com/spotify/comet-core",
     author="Spotify Platform Security",
     author_email="wasabi@spotify.com",
@@ -33,5 +33,6 @@ setuptools.setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
 )
