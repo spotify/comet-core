@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/spotify/comet-core.svg?token=y6Hohk5x1wuwJMszK678&branch=master)](https://travis-ci.com/spotify/comet-core)
+[![Actions Status](https://github.com/spotify/comet-core/workflows/comet-core%20CI/badge.svg)](https://github.com/spotify/comet-core/actions)
 
 # Comet
 
