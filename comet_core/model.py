@@ -45,6 +45,8 @@ class JSONType(types.TypeDecorator):  # pylint: disable=abstract-method
 
     impl = UnicodeText
 
+    cache_ok = True
+
     def load_dialect_impl(self, dialect):
         """This is an end-user override hook that can be used to provide
         differing types depending on the given dialect.
