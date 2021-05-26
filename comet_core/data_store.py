@@ -17,6 +17,9 @@
 # pylint: disable=no-member
 # See: https://github.com/PyCQA/pylint/issues/3610
 
+import logging
+import traceback
+
 from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine
@@ -27,6 +30,7 @@ from comet_core.model import BaseRecord, EventRecord, IgnoreFingerprintRecord
 
 Session = sessionmaker(autocommit=True)
 
+LOG = logging.getLogger(__name__)
 
 def remove_duplicate_events(event_record_list):
     """
@@ -75,6 +79,10 @@ class DataStore:  # pylint: disable=too-many-public-methods
         Args:
             record (EventRecord): the record object to store
         """
+        # temporary logs to debug sqlalchemy warnings
+        LOG.info("add_record called, logging some debug info...")
+        LOG.info(str(record))
+        LOG.info(", ".join(traceback.format_list(traceback.extract_stack())))
         self.session.add(record)
 
     def get_unprocessed_events_batch(self, wait_for_more, max_wait, source_type):
