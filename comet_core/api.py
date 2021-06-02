@@ -107,7 +107,7 @@ class CometApi:  # pylint: disable=too-many-instance-attributes
         app.register_blueprint(api_v0.bp)
 
         @app.route("/")
-        def health_check():  # pylint: disable=unused-variable
+        def health_check():
             """Can be called by e.g. Kubernetes to verify that the API is up
 
             Returns:

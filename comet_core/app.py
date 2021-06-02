@@ -466,7 +466,7 @@ class Comet:
 
                 events_to_remind = []
                 if source_type_config["communication_digest_mode"]:
-                    if any([event.new for event in events]) or self.data_store.check_any_issue_needs_reminder(
+                    if any(event.new for event in events) or self.data_store.check_any_issue_needs_reminder(
                         owner_reminder_cadence, events
                     ):
                         events_to_remind = events

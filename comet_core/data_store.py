@@ -14,9 +14,6 @@
 
 """Data Store module - interface to database."""
 
-# pylint: disable=no-member
-# See: https://github.com/PyCQA/pylint/issues/3610
-
 from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine
