@@ -48,7 +48,7 @@ def get_db():
         DataStore: a request-scoped datastore instance
     """
     if "db" not in g:
-        g.db = DataStore(current_app.config.get("database_uri"))
+        g.db = DataStore(current_app.config.get("database_uri")) # pylint: disable=assigning-non-slot
     return g.db
 
 
@@ -60,12 +60,12 @@ def requires_auth(f):
     # pylint: disable=missing-return-doc,missing-return-type-doc
     def decorated(*args, **kwargs):
         auth_func = current_app.config.get("auth_func")
-        g.authorized_for = []
+        g.authorized_for = [] # pylint: disable=assigning-non-slot
         if auth_func:
             res = auth_func()
             if isinstance(res, Response):
                 return res
-            g.authorized_for = res
+            g.authorized_for = res # pylint: disable=assigning-non-slot
             return f(*args, **kwargs)
         LOG.warning("no auth function specified")
         return f(*args, **kwargs)

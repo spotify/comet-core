@@ -32,6 +32,7 @@ Session = sessionmaker(autocommit=True)
 
 LOG = logging.getLogger(__name__)
 
+
 def remove_duplicate_events(event_record_list):
     """
     This removes duplicates based on fingerprint and chooses the newest issue
