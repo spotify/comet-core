@@ -528,14 +528,14 @@ def test_get_real_time_events_did_not_addressed(ds_with_real_time_events, non_ad
     source_type = "datastoretest"
     non_addressed_events = ds_with_real_time_events.get_events_did_not_addressed(source_type)
 
-    assert non_addressed_event in non_addressed_events
+    assert non_addressed_event.__repr__() in [x.__repr__() for x in non_addressed_events]
 
 
 def test_get_real_time_events_need_escalation(ds_with_real_time_events, event_to_escalate):
     source_type = "datastoretest"
     events_to_escalate = ds_with_real_time_events.get_events_need_escalation(source_type)
 
-    assert event_to_escalate in events_to_escalate
+    assert event_to_escalate.__repr__() in [x.__repr__() for x in events_to_escalate]
 
 
 def test_ignore_event_fingerprint_with_metadata(ds_instance):
@@ -544,12 +544,13 @@ def test_ignore_event_fingerprint_with_metadata(ds_instance):
     ds_instance.ignore_event_fingerprint(
         fingerprint, ignore_type=IgnoreFingerprintRecord.ESCALATE_MANUALLY, record_metadata=record_metadata
     )
-    result = (
-        ds_instance.session.query(IgnoreFingerprintRecord)
-        .filter(IgnoreFingerprintRecord.fingerprint == fingerprint)
-        .one_or_none()
-    )
-    assert result.record_metadata == record_metadata
+    with ds_instance.session.begin() as session:
+        result = (
+            session.query(IgnoreFingerprintRecord)
+            .filter(IgnoreFingerprintRecord.fingerprint == fingerprint)
+            .one_or_none()
+        )
+        assert result.record_metadata == record_metadata
 
 
 def test_get_interactions_for_fingerprint(ds_instance):

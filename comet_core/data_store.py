@@ -16,13 +16,9 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql.expression import func
+import sqlalchemy
 
 from comet_core.model import BaseRecord, EventRecord, IgnoreFingerprintRecord
-
-Session = sessionmaker(autocommit=True)
 
 
 def remove_duplicate_events(event_record_list):
@@ -51,28 +47,19 @@ class DataStore:  # pylint: disable=too-many-public-methods
     """
 
     def __init__(self, database_uri):
-        self.engine = create_engine(database_uri)
-        self.connection = self.engine.connect()
+        self.engine = sqlalchemy.create_engine(database_uri)
 
-        Session.configure(bind=self.engine)
-        self.session = Session()
+        self.session = sqlalchemy.orm.sessionmaker(self.engine, expire_on_commit=False)
 
         BaseRecord.metadata.create_all(self.engine)
-
-    def add_event(self, event):
-        """Add an event to the data store.
-
-        Args:
-            event (PluginBase): a typed event to add to the database.
-        """
-        self.add_record(event.record)
 
     def add_record(self, record):
         """Store a record in the data store.
         Args:
             record (EventRecord): the record object to store
         """
-        self.session.add(record)
+        with self.session.begin() as session:
+            session.add(record)
 
     def get_unprocessed_events_batch(self, wait_for_more, max_wait, source_type):
         """Get all unprocessed events of the given source_type but only if the latest event is older than
@@ -91,12 +78,13 @@ class DataStore:  # pylint: disable=too-many-public-methods
         """
 
         # https://explainextended.com/2009/09/18/not-in-vs-not-exists-vs-left-join-is-null-mysql/
-        events = (
-            self.session.query(EventRecord)
-            .filter((EventRecord.processed_at.is_(None)) & (EventRecord.source_type == source_type))
-            .order_by(EventRecord.received_at.asc())
-            .all()
-        )
+        with self.session.begin() as session:
+            events = (
+                session.query(EventRecord)
+                .filter((EventRecord.processed_at.is_(None)) & (EventRecord.source_type == source_type))
+                .order_by(EventRecord.received_at.asc())
+                .all()
+            )
 
         now = datetime.utcnow()
 
@@ -120,17 +108,18 @@ class DataStore:  # pylint: disable=too-many-public-methods
             list: list of `EventRecord`s not addressed,
             or empty list if there is nothing to return
         """
-        non_addressed_events = (
-            self.session.query(EventRecord)
-            .filter(
-                (EventRecord.sent_at.isnot(None))
-                & (EventRecord.escalated_at.is_(None))
-                & (EventRecord.source_type == source_type)
+        with self.session.begin() as session:
+            non_addressed_events = (
+                session.query(EventRecord)
+                .filter(
+                    (EventRecord.sent_at.isnot(None))
+                    & (EventRecord.escalated_at.is_(None))
+                    & (EventRecord.source_type == source_type)
+                )
+                .outerjoin(IgnoreFingerprintRecord, EventRecord.fingerprint == IgnoreFingerprintRecord.fingerprint)
+                .filter(IgnoreFingerprintRecord.fingerprint.is_(None))
+                .all()
             )
-            .outerjoin(IgnoreFingerprintRecord, EventRecord.fingerprint == IgnoreFingerprintRecord.fingerprint)
-            .filter(IgnoreFingerprintRecord.fingerprint.is_(None))
-            .all()
-        )
 
         return non_addressed_events
 
@@ -146,12 +135,13 @@ class DataStore:  # pylint: disable=too-many-public-methods
             bool: True if any of the provided records represents an issue that needs to be reminded about
         """
         fingerprints = [record.fingerprint for record in records]
-        timestamps = (
-            self.session.query(func.max(EventRecord.sent_at))
-            .filter(EventRecord.fingerprint.in_(fingerprints) & EventRecord.sent_at.isnot(None))
-            .group_by(EventRecord.fingerprint)
-            .all()
-        )
+        with self.session.begin() as session:
+            timestamps = (
+                session.query(sqlalchemy.sql.expression.func.max(EventRecord.sent_at))
+                .filter(EventRecord.fingerprint.in_(fingerprints) & EventRecord.sent_at.isnot(None))
+                .group_by(EventRecord.fingerprint)
+                .all()
+            )
         if timestamps:
             return max(timestamps)[0] <= datetime.utcnow() - search_timedelta
         return False
@@ -168,12 +158,15 @@ class DataStore:  # pylint: disable=too-many-public-methods
             list: list of fingerprints that represent issues that need to be reminded about
         """
         fingerprints = [record.fingerprint for record in records]
-        fingerprints_to_remind = (
-            self.session.query(func.max(EventRecord.sent_at).label("sent_at"), EventRecord.fingerprint)
-            .filter(EventRecord.fingerprint.in_(fingerprints) & EventRecord.sent_at.isnot(None))
-            .group_by(EventRecord.fingerprint)
-            .all()
-        )
+        with self.session.begin() as session:
+            fingerprints_to_remind = (
+                session.query(
+                    sqlalchemy.sql.expression.func.max(EventRecord.sent_at).label("sent_at"), EventRecord.fingerprint
+                )
+                .filter(EventRecord.fingerprint.in_(fingerprints) & EventRecord.sent_at.isnot(None))
+                .group_by(EventRecord.fingerprint)
+                .all()
+            )
         result = []
         deltat = datetime.utcnow() - search_timedelta
         for f in fingerprints_to_remind:
@@ -192,7 +185,8 @@ class DataStore:  # pylint: disable=too-many-public-methods
         time_now = datetime.utcnow()
         updates = [{"id": r.id, column_name: time_now} for r in records]
 
-        self.session.bulk_update_mappings(EventRecord, updates)
+        with self.session.begin() as session:
+            session.bulk_update_mappings(EventRecord, updates)
 
     def update_processed_at_timestamp_to_now(self, records):  # pylint: disable=invalid-name
         """Update the processed_at timestamp for the given records to now.
@@ -226,13 +220,14 @@ class DataStore:  # pylint: disable=too-many-public-methods
         Returns:
             EventRecord: oldest EventRecord with the given fingerprint
         """
-        return (
-            self.session.query(EventRecord)
-            .filter(EventRecord.fingerprint == fingerprint)
-            .order_by(EventRecord.received_at.asc())
-            .limit(1)
-            .one_or_none()
-        )
+        with self.session.begin() as session:
+            return (
+                session.query(EventRecord)
+                .filter(EventRecord.fingerprint == fingerprint)
+                .order_by(EventRecord.received_at.asc())
+                .limit(1)
+                .one_or_none()
+            )
 
     def get_latest_event_with_fingerprint(self, fingerprint):  # pylint: disable=invalid-name
         """
@@ -243,13 +238,14 @@ class DataStore:  # pylint: disable=too-many-public-methods
         Returns:
             EventRecord: latest EventRecord with the given fingerprint
         """
-        return (
-            self.session.query(EventRecord)
-            .filter(EventRecord.fingerprint == fingerprint)
-            .order_by(EventRecord.received_at.desc())
-            .limit(1)
-            .one_or_none()
-        )
+        with self.session.begin() as session:
+            return (
+                session.query(EventRecord)
+                .filter(EventRecord.fingerprint == fingerprint)
+                .order_by(EventRecord.received_at.desc())
+                .limit(1)
+                .one_or_none()
+            )
 
     def check_needs_escalation(self, escalation_time, event):
         """Checks if the event needs to be escalated. Returns True if the first occurrence of an event with the same
@@ -285,9 +281,8 @@ class DataStore:  # pylint: disable=too-many-public-methods
             reported_at=reported_at,
             record_metadata=record_metadata,
         )
-        self.session.begin()
-        self.session.add(new_record)
-        self.session.commit()
+        with self.session.begin() as session:
+            session.add(new_record)
 
     def fingerprint_is_ignored(self, fingerprint):
         """Check if a fingerprint is marked as ignored (whitelisted or snoozed)
@@ -296,16 +291,17 @@ class DataStore:  # pylint: disable=too-many-public-methods
         Returns:
             bool: True if whitelisted
         """
-        return (
-            self.session.query(IgnoreFingerprintRecord)
-            .filter(IgnoreFingerprintRecord.fingerprint == fingerprint)
-            .filter(
-                (IgnoreFingerprintRecord.expires_at > datetime.utcnow())
-                | (IgnoreFingerprintRecord.expires_at.is_(None))
+        with self.session.begin() as session:
+            return (
+                session.query(IgnoreFingerprintRecord)
+                .filter(IgnoreFingerprintRecord.fingerprint == fingerprint)
+                .filter(
+                    (IgnoreFingerprintRecord.expires_at > datetime.utcnow())
+                    | (IgnoreFingerprintRecord.expires_at.is_(None))
+                )
+                .count()
+                >= 1
             )
-            .count()
-            >= 1
-        )
 
     def may_send_escalation(self, source_type, escalation_reminder_cadence):
         """Check if we are allowed to send another esclation notification to the source_type escalation recipient.
@@ -318,13 +314,14 @@ class DataStore:  # pylint: disable=too-many-public-methods
         Returns:
             bool: True if an escalation may be sent, False otherwise
         """
-        last_escalated = (
-            self.session.query(EventRecord.escalated_at)
-            .filter(EventRecord.source_type == source_type)
-            .order_by(EventRecord.escalated_at.desc())
-            .limit(1)
-            .one_or_none()
-        )
+        with self.session.begin() as session:
+            last_escalated = (
+                session.query(EventRecord.escalated_at)
+                .filter(EventRecord.source_type == source_type)
+                .order_by(EventRecord.escalated_at.desc())
+                .limit(1)
+                .one_or_none()
+            )
 
         if not last_escalated[0]:
             return True
@@ -341,13 +338,14 @@ class DataStore:  # pylint: disable=too-many-public-methods
         Returns:
             bool: True if any previous event with the same fingerprint was escalated, False otherwise
         """
-        return (
-            self.session.query(EventRecord)
-            .filter(EventRecord.fingerprint == event.fingerprint)
-            .filter(EventRecord.escalated_at.isnot(None))
-            .count()
-            >= 1
-        )
+        with self.session.begin() as session:
+            return (
+                session.query(EventRecord)
+                .filter(EventRecord.fingerprint == event.fingerprint)
+                .filter(EventRecord.escalated_at.isnot(None))
+                .count()
+                >= 1
+            )
 
     def get_open_issues(self, owners):
         """Return a list of open (newer than 24h), not whitelisted or snoozed issues for the given owners.
@@ -356,26 +354,27 @@ class DataStore:  # pylint: disable=too-many-public-methods
         Returns:
             list: list of EventRecord, representing open, non-ignored issues for the given owners
         """
-        open_issues = (
-            self.session.query(EventRecord)
-            .filter(EventRecord.owner.in_(owners))
-            .filter(EventRecord.received_at >= datetime.utcnow() - timedelta(days=1))
-            .all()
-        )
-
-        open_issues = remove_duplicate_events(open_issues)
-
-        open_issues_fps = [issue.fingerprint for issue in open_issues]
-
-        ignored_issues_fps_tuples = (
-            self.session.query(IgnoreFingerprintRecord.fingerprint)
-            .filter(IgnoreFingerprintRecord.fingerprint.in_(open_issues_fps))
-            .filter(
-                (IgnoreFingerprintRecord.expires_at > datetime.utcnow())
-                | (IgnoreFingerprintRecord.expires_at.is_(None))
+        with self.session.begin() as session:
+            open_issues = (
+                session.query(EventRecord)
+                .filter(EventRecord.owner.in_(owners))
+                .filter(EventRecord.received_at >= datetime.utcnow() - timedelta(days=1))
+                .all()
             )
-            .all()
-        )
+
+            open_issues = remove_duplicate_events(open_issues)
+
+            open_issues_fps = [issue.fingerprint for issue in open_issues]
+
+            ignored_issues_fps_tuples = (
+                session.query(IgnoreFingerprintRecord.fingerprint)
+                .filter(IgnoreFingerprintRecord.fingerprint.in_(open_issues_fps))
+                .filter(
+                    (IgnoreFingerprintRecord.expires_at > datetime.utcnow())
+                    | (IgnoreFingerprintRecord.expires_at.is_(None))
+                )
+                .all()
+            )
 
         ignored_issues_fps = [t[0] for t in ignored_issues_fps_tuples]
 
@@ -396,14 +395,15 @@ class DataStore:  # pylint: disable=too-many-public-methods
             bool: True if the issue is new, False if it is old.
         """
 
-        most_recent_processed = (
-            self.session.query(EventRecord.received_at)
-            .filter(EventRecord.fingerprint == fingerprint)
-            .filter(EventRecord.processed_at.isnot(None))
-            .order_by(EventRecord.received_at.desc())
-            .limit(1)
-            .one_or_none()
-        )
+        with self.session.begin() as session:
+            most_recent_processed = (
+                session.query(EventRecord.received_at)
+                .filter(EventRecord.fingerprint == fingerprint)
+                .filter(EventRecord.processed_at.isnot(None))
+                .order_by(EventRecord.received_at.desc())
+                .limit(1)
+                .one_or_none()
+            )
 
         if not most_recent_processed:
             return True
@@ -419,18 +419,19 @@ class DataStore:  # pylint: disable=too-many-public-methods
         Returns:
             list: list of `EventRecord`s to escalate.
         """
-        events_to_escalate = (
-            self.session.query(EventRecord)
-            .filter(
-                (EventRecord.sent_at.isnot(None))
-                & (EventRecord.escalated_at.is_(None))
-                & (EventRecord.source_type == source_type)
+        with self.session.begin() as session:
+            events_to_escalate = (
+                session.query(EventRecord)
+                .filter(
+                    (EventRecord.sent_at.isnot(None))
+                    & (EventRecord.escalated_at.is_(None))
+                    & (EventRecord.source_type == source_type)
+                )
+                .outerjoin(IgnoreFingerprintRecord, EventRecord.fingerprint == IgnoreFingerprintRecord.fingerprint)
+                .filter(IgnoreFingerprintRecord.ignore_type == IgnoreFingerprintRecord.ESCALATE_MANUALLY)
+                .all()
             )
-            .outerjoin(IgnoreFingerprintRecord, EventRecord.fingerprint == IgnoreFingerprintRecord.fingerprint)
-            .filter(IgnoreFingerprintRecord.ignore_type == IgnoreFingerprintRecord.ESCALATE_MANUALLY)
-            .all()
-        )
-        return events_to_escalate
+            return events_to_escalate
 
     def get_interactions_fingerprint(self, fingerprint):
         """Return the list of all interactions associated with a fingerprint.
@@ -440,16 +441,17 @@ class DataStore:  # pylint: disable=too-many-public-methods
             list: list of IgnoreFingerprintRecord for the specified fingerprint
         """
 
-        interactions = (
-            self.session.query(IgnoreFingerprintRecord).filter(IgnoreFingerprintRecord.fingerprint == fingerprint).all()
-        )
-        return [
-            {
-                "id": t.id,
-                "fingerprint": t.fingerprint,
-                "ignore_type": t.ignore_type,
-                "reported_at": t.reported_at,
-                "expires_at": t.expires_at,
-            }
-            for t in interactions
-        ]
+        with self.session.begin() as session:
+            interactions = (
+                session.query(IgnoreFingerprintRecord).filter(IgnoreFingerprintRecord.fingerprint == fingerprint).all()
+            )
+            return [
+                {
+                    "id": t.id,
+                    "fingerprint": t.fingerprint,
+                    "ignore_type": t.ignore_type,
+                    "reported_at": t.reported_at,
+                    "expires_at": t.expires_at,
+                }
+                for t in interactions
+            ]
