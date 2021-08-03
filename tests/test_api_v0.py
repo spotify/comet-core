@@ -150,7 +150,7 @@ def test_snooze(client):
 
 
 def test_snooze_error(bad_client):
-    """Test the snooze endpoint fails when no data is passed """
+    """Test the snooze endpoint fails when no data is passed"""
     res = bad_client.post("/v0/snooze")
     assert res.json
     assert res.status == "500 INTERNAL SERVER ERROR"
