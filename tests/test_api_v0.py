@@ -17,7 +17,7 @@
 from unittest import mock
 
 import pytest
-from flask import g, Response
+from flask import Response, g
 
 from comet_core.api import CometApi
 

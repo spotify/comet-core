@@ -14,9 +14,10 @@
 
 """Global test fixtures"""
 import os
-from comet_core import Comet
 
 import pytest
+
+from comet_core import Comet
 
 
 @pytest.fixture

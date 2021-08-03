@@ -16,7 +16,6 @@
 
 from comet_core.fingerprint import comet_event_fingerprint
 
-
 ORIG_DICT = {"a": "b", "b": "c", "res": {"lel": "wahat", "gl": "hf"}}
 
 ORIG_DICT_FP = "30c3e95d8fb3665ba70c6e3630a57d9a"

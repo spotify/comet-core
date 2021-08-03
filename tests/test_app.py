@@ -14,9 +14,9 @@
 
 """Test comet_handler"""
 
+import json
 from datetime import datetime, timedelta
 from unittest import mock
-import json
 
 from freezegun import freeze_time
 

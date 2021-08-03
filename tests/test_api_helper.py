@@ -18,7 +18,7 @@ from unittest import mock
 import pytest
 
 from comet_core.api import CometApi
-from comet_core.api_helper import get_db, hydrate_open_issues, assert_valid_token, hydrate_with_request_headers
+from comet_core.api_helper import assert_valid_token, get_db, hydrate_open_issues, hydrate_with_request_headers
 from comet_core.fingerprint import fingerprint_hmac
 
 
