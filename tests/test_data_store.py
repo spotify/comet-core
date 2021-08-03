@@ -19,11 +19,11 @@ from datetime import datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
-from tests.utils import get_all_test_messages
 
 import comet_core.data_store
 from comet_core.data_store import remove_duplicate_events
 from comet_core.model import EventRecord, IgnoreFingerprintRecord
+from tests.utils import get_all_test_messages
 
 
 @pytest.fixture

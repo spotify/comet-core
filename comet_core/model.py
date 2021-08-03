@@ -16,7 +16,7 @@
 import json
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, JSON, String, UnicodeText, types
+from sqlalchemy import JSON, Column, DateTime, Integer, String, UnicodeText, types
 from sqlalchemy.ext.declarative import declarative_base
 
 

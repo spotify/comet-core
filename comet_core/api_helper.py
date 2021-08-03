@@ -17,7 +17,7 @@ import hmac
 import logging
 from functools import wraps
 
-from flask import g, Response, current_app
+from flask import Response, current_app, g
 
 from comet_core.data_store import DataStore
 from comet_core.fingerprint import fingerprint_hmac
