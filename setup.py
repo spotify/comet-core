@@ -16,7 +16,7 @@ import setuptools
 
 setuptools.setup(
     name="comet-core",
-    version="2.9.0",
+    version="2.10.0",
     url="https://github.com/spotify/comet-core",
     author="Spotify Platform Security",
     author_email="wasabi@spotify.com",
@@ -24,7 +24,7 @@ setuptools.setup(
     long_description=open("README.md", "r+", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     packages=["comet_core"],
-    install_requires=["Flask~=2.0", "Flask-Cors~=3.0", "python-json-logger~=2.0", "SQLAlchemy~=1.4"],
+    install_requires=["Flask~=2.0", "Flask-Cors~=3.0", "SQLAlchemy~=1.4"],
     include_package_data=True,
     classifiers=[
         "Development Status :: 5 - Production/Stable",
