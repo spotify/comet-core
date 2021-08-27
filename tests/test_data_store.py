@@ -11,54 +11,85 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# pylint: disable=invalid-name,missing-docstring,redefined-outer-name
 """Tests the event_parser module"""
+
+# pylint: disable=invalid-name,redefined-outer-name
 
 from datetime import datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
 
-import comet_core.data_store
 from comet_core.data_store import remove_duplicate_events
 from comet_core.model import EventRecord, IgnoreFingerprintRecord
-from tests.utils import get_all_test_messages
+
+
+# Fixtures used in some of the data store tests. Additional generic fixtures are found in conftest.py
+# There is no generic usage of the fixtures, some tests are defining their test data inline and some are using the
+# test data from fixtures.
+@pytest.fixture
+def non_addressed_event():
+    """Event sent but missing in the ignore_event table to indicate that it wasn't addressed by the user"""
+    event = EventRecord(
+        received_at=datetime(2018, 7, 7, 9, 0, 0),
+        source_type="datastoretest",
+        owner="a",
+        sent_at=datetime(2018, 7, 7, 9, 0, 0),
+        data={},
+    )
+    event.fingerprint = "f1"
+    return event
 
 
 @pytest.fixture
-# pylint: disable=missing-yield-doc,missing-yield-type-doc
-def data_store_with_test_events():
-    data_store = comet_core.data_store.DataStore("sqlite://")
-
-    one = EventRecord(received_at=datetime(2018, 7, 7, 9, 0, 0), source_type="datastoretest", owner="a", data={})
-    one.fingerprint = "f1"
-    two = EventRecord(received_at=datetime(2018, 7, 7, 9, 30, 0), source_type="datastoretest", owner="a", data={})
-    two.fingerprint = "f2"
-    three = EventRecord(
-        received_at=datetime(2018, 7, 7, 9, 0, 0),
-        source_type="datastoretest2",  # Note that this is another source type!
-        owner="b",
+def addressed_event(data_store):
+    """Event was sent and addressed (ack by the user)."""
+    ack_event = EventRecord(
+        received_at=datetime(2018, 7, 7, 9, 30, 0),
+        source_type="datastoretest",
+        owner="a",
+        sent_at=datetime(2018, 7, 7, 9, 30, 0),
         data={},
     )
-    three.fingerprint = "f3"
-
-    data_store.add_record(one)
-    data_store.add_record(two)
-    data_store.add_record(three)
-
-    yield data_store
+    ack_event.fingerprint = "f2"
+    data_store.ignore_event_fingerprint(ack_event.fingerprint, ignore_type=IgnoreFingerprintRecord.ACKNOWLEDGE)
+    return ack_event
 
 
-def test_data_store():
-    data_store = comet_core.data_store.DataStore("sqlite://")
-    for event in get_all_test_messages():
+@pytest.fixture
+def event_to_escalate(data_store):
+    """Event was sent and addressed (escalated by the user)."""
+    escalated_event = EventRecord(
+        received_at=datetime(2018, 7, 7, 9, 30, 0),
+        source_type="datastoretest",
+        owner="a",
+        sent_at=datetime(2018, 7, 7, 9, 30, 0),
+        data={},
+    )
+    escalated_event.fingerprint = "f3"
+    data_store.ignore_event_fingerprint(
+        escalated_event.fingerprint, ignore_type=IgnoreFingerprintRecord.ESCALATE_MANUALLY
+    )
+    return escalated_event
+
+
+@pytest.fixture
+def data_store_with_real_time_events(data_store, addressed_event, non_addressed_event, event_to_escalate):
+    """Data store with real time events added."""
+    data_store.add_record(addressed_event)
+    data_store.add_record(non_addressed_event)
+    data_store.add_record(event_to_escalate)
+    return data_store
+
+
+def test_data_store(data_store, messages):
+    """Test that the new events can be added to the data store."""
+    for event in messages:
         data_store.add_record(event.get_record())
 
 
-def test_date_sorting():
-    data_store = comet_core.data_store.DataStore("sqlite://")
-
+def test_date_sorting(data_store):
+    """Test that the date sorting work by adding two events to the database and query for the oldest/latest."""
     old = EventRecord(
         received_at=datetime(2018, 2, 19, 0, 0, 11), source_type="datastoretest", data={"fingerprint": "same"}
     )
@@ -79,8 +110,8 @@ def test_date_sorting():
 
 
 @freeze_time("2018-07-07 10:00:00")
-# pylint: disable=missing-docstring, invalid-name
 def test_get_unprocessed_events_batch_will_wait(data_store_with_test_events):
+    """Test that no events are returned when asked to wait for a long time."""
     val = data_store_with_test_events.get_unprocessed_events_batch(
         timedelta(days=1024 * 365), timedelta(days=1024 * 365), "datastoretest"
     )
@@ -88,8 +119,8 @@ def test_get_unprocessed_events_batch_will_wait(data_store_with_test_events):
 
 
 @freeze_time("2018-07-07 10:00:00")
-# pylint: disable=missing-docstring
 def test_get_unprocessed_events(data_store_with_test_events):
+    """Test that all unprocessed events are returned for a given source type."""
     val = data_store_with_test_events.get_unprocessed_events_batch(
         timedelta(minutes=1), timedelta(minutes=1), "datastoretest"
     )
@@ -97,22 +128,11 @@ def test_get_unprocessed_events(data_store_with_test_events):
 
 
 @freeze_time("2018-07-07 10:00:00")
-# pylint: disable=missing-docstring, invalid-name
-def test_get_unprocessed_events_max_wait(data_store_with_test_events):
-    val = data_store_with_test_events.get_unprocessed_events_batch(
-        timedelta(minutes=600), timedelta(minutes=60), "datastoretest"
-    )
-    assert val == []
-
-    val = data_store_with_test_events.get_unprocessed_events_batch(
-        timedelta(minutes=600), timedelta(minutes=59), "datastoretest"
-    )
-    assert len(val) == 2
-
-
-@freeze_time("2018-07-07 10:00:00")
-# pylint: disable=missing-docstring, invalid-name
 def test_get_unprocessed_events_wait_for_more(data_store_with_test_events):
+    """Test that unprocessed events are returned.
+
+    TODO: Do this test add anyting compared to the above?
+    """
     val = data_store_with_test_events.get_unprocessed_events_batch(
         timedelta(minutes=30), timedelta(minutes=120), "datastoretest"
     )
@@ -125,47 +145,61 @@ def test_get_unprocessed_events_wait_for_more(data_store_with_test_events):
 
 
 @freeze_time("2018-07-07 10:00:00")
-# pylint: disable=missing-docstring, invalid-name
 def test_update_sent_at_timestamp_to_now(data_store_with_test_events):
+    """Tests that updating the sent_at timestamp for events is working."""
     val = data_store_with_test_events.get_unprocessed_events_batch(
         timedelta(minutes=1), timedelta(minutes=1), "datastoretest"
     )
     assert len(val) == 2
+
     data_store_with_test_events.update_sent_at_timestamp_to_now(val)
     record = data_store_with_test_events.get_latest_event_with_fingerprint(val[0].fingerprint)
-    assert record.sent_at is not None
     assert isinstance(record.sent_at, datetime)
 
 
 @freeze_time("2018-07-07 10:00:00")
-# pylint: disable=missing-docstring, invalid-name
 def test_update_event_escalation_at_to_now(data_store_with_test_events):
+    """Tests that updating escalated_at for events is working."""
     val = data_store_with_test_events.get_unprocessed_events_batch(
         timedelta(minutes=1), timedelta(minutes=1), "datastoretest"
     )
     assert len(val) == 2
     data_store_with_test_events.update_event_escalated_at_to_now(val)
     record = data_store_with_test_events.get_latest_event_with_fingerprint(val[0].fingerprint)
-    assert record.escalated_at is not None
     assert isinstance(record.escalated_at, datetime)
 
 
 @freeze_time("2018-07-07 10:00:00")
-# pylint: disable=missing-docstring, invalid-name
 def test_update_processed_at_timestamp_to_now(data_store_with_test_events):
+    """Tests that updating processed_at for events is working."""
     val = data_store_with_test_events.get_unprocessed_events_batch(
         timedelta(minutes=1), timedelta(minutes=1), "datastoretest"
     )
     assert len(val) == 2
     data_store_with_test_events.update_processed_at_timestamp_to_now(val)
     record = data_store_with_test_events.get_latest_event_with_fingerprint(val[0].fingerprint)
-    assert record.processed_at is not None
     assert isinstance(record.processed_at, datetime)
 
 
-def test_get_any_issues_need_reminder():
-    data_store = comet_core.data_store.DataStore("sqlite://")
+def test_get_any_issues_need_reminder(data_store):
+    """Tests events that needs reminders.
 
+    Part 1: Add three events to the datastore and check that two are returned.
+        issue / time --->
+          1 --------a------|-------------->
+          2 ----a-------b--|--------------> (2c sent_at == NULL)
+          3 ---------------|--------------> (3a sent_at == NULL)
+                           ^
+                        -7days
+
+    Part 2: Add another issue and check that only one event is returned.
+        issue / time --->
+          1 --------a------|-----b-------->
+          2 ----a-------b--|--------------> (2c sent_at == NULL)
+          3 ---------------|--------------> (3a sent_at == NULL)
+                           ^
+                        -7days
+    """
     test_fingerprint1 = "f1"
     test_fingerprint2 = "f2"
     test_fingerprint3 = "f3"
@@ -200,6 +234,7 @@ def test_get_any_issues_need_reminder():
     #                 -7days
 
     result = data_store.get_any_issues_need_reminder(timedelta(days=7), [one_a, two_a, three_a])
+
     assert len(result) == 2
     assert test_fingerprint2 in result
     assert test_fingerprint1 in result
@@ -214,13 +249,30 @@ def test_get_any_issues_need_reminder():
     #                 -7days
 
     result = data_store.get_any_issues_need_reminder(timedelta(days=7), [one_a, two_a, three_a])
+
     assert len(result) == 1
     assert test_fingerprint2 in result
 
 
-def test_check_any_issue_needs_reminder():
-    data_store = comet_core.data_store.DataStore("sqlite://")
+def test_check_any_issue_needs_reminder(data_store):
+    """Checks if any event needs reminder.
 
+    Part 1: Add three events to the datastore and check that two are returned.
+        issue / time --->
+          1 --------a------|-------------->
+          2 ----a-------b--|--------------> (2c sent_at == NULL)
+          3 ---------------|--------------> (3a sent_at == NULL)
+                           ^
+                        -7days
+
+    Part 2: Add another issue and check that only one event is returned.
+        issue / time --->
+          1 --------a------|-----b-------->
+          2 ----a-------b--|--------------> (2c sent_at == NULL)
+          3 ---------------|--------------> (3a sent_at == NULL)
+                           ^
+                        -7days
+    """
     test_fingerprint1 = "f1"
     test_fingerprint2 = "f2"
     test_fingerprint3 = "f3"
@@ -266,8 +318,14 @@ def test_check_any_issue_needs_reminder():
     assert not data_store.check_any_issue_needs_reminder(timedelta(days=7), [one_a, two_a, three_a])
 
 
-def test_check_needs_escalation():
-    data_store = comet_core.data_store.DataStore("sqlite://")
+def test_check_nonexisting_event(data_store):
+    """Test escalating an event that does not exist."""
+    event = EventRecord(source_type="datastoretest")
+    assert not data_store.check_needs_escalation(timedelta(days=1), event)
+
+
+def test_check_needs_escalation(data_store):
+    """Checks if events needs escalation by adding multiple events with the same fingerprint."""
 
     test_fingerprint1 = "f1"
     test_fingerprint2 = "f2"
@@ -303,9 +361,8 @@ def test_check_needs_escalation():
     assert not data_store.check_needs_escalation(timedelta(days=1), five)
 
 
-def test_check_acceptedrisk_event_fingerprint():
-    data_store = comet_core.data_store.DataStore("sqlite://")
-
+def test_check_acceptedrisk_event_fingerprint(data_store):
+    """Check that ignored events are properly handled by their fingerprint."""
     test_fingerprint1 = "f1"
 
     assert not data_store.fingerprint_is_ignored(test_fingerprint1)
@@ -314,18 +371,9 @@ def test_check_acceptedrisk_event_fingerprint():
     assert data_store.fingerprint_is_ignored(test_fingerprint1)
 
 
-def test_check_snoozed_event_fingerprint():
-    data_store = comet_core.data_store.DataStore("sqlite://")
-
-    test_fingerprint1 = "f1"
+def test_check_snoozed_event(data_store):
+    """Check that snoozed events are not ignored."""
     test_fingerprint2 = "f2"
-
-    assert not data_store.fingerprint_is_ignored(test_fingerprint1)
-
-    data_store.ignore_event_fingerprint(
-        test_fingerprint1, ignore_type=IgnoreFingerprintRecord.SNOOZE, expires_at=datetime.utcnow() + timedelta(days=30)
-    )
-    assert data_store.fingerprint_is_ignored(test_fingerprint1)
 
     test_snooze_record = IgnoreFingerprintRecord(
         fingerprint=test_fingerprint2,
@@ -337,28 +385,24 @@ def test_check_snoozed_event_fingerprint():
     assert not data_store.fingerprint_is_ignored(test_fingerprint2)
 
 
-def test_may_send_escalation():
-    data_store = comet_core.data_store.DataStore("sqlite://")
+def test_may_send_escalation(data_store):
+    """Test the escalation function from a datastore with both escalated and non-escalated events."""
 
     data_store.add_record(EventRecord(source_type="type1", escalated_at=None))
-
     assert data_store.may_send_escalation("type1", timedelta(days=7))
 
     data_store.add_record(EventRecord(source_type="type1", escalated_at=datetime.utcnow() - timedelta(days=8)))
-
     assert data_store.may_send_escalation("type1", timedelta(days=7))
 
     data_store.add_record(EventRecord(source_type="type1", escalated_at=datetime.utcnow() - timedelta(days=6)))
-
     assert not data_store.may_send_escalation("type1", timedelta(days=7))
 
     data_store.add_record(EventRecord(source_type="type2", escalated_at=None))
-
     assert data_store.may_send_escalation("type2", timedelta(days=7))
 
 
-def test_check_if_previously_escalated():
-    data_store = comet_core.data_store.DataStore("sqlite://")
+def test_check_if_previously_escalated(data_store):
+    """Test the 'previously escalated' function by adding events and then escalate them."""
 
     one = EventRecord(source_type="test_type", fingerprint="f1", escalated_at=None)
     data_store.add_record(one)
@@ -376,8 +420,8 @@ def test_check_if_previously_escalated():
     assert data_store.check_if_previously_escalated(one)
 
 
-def test_get_open_issues(*_):
-    data_store = comet_core.data_store.DataStore("sqlite://")
+def test_get_open_issues(data_store):
+    """Tests getting open issues by adding events of different types and check how many are still open."""
 
     one = EventRecord(source_type="test_type", fingerprint="f1", received_at=datetime.utcnow(), owner="test")
     data_store.add_record(one)
@@ -424,8 +468,8 @@ def test_get_open_issues(*_):
     assert len(open_issues) == 1
 
 
-def test_check_if_new(*_):
-    data_store = comet_core.data_store.DataStore("sqlite://")
+def test_check_if_new(data_store):
+    """Check if there are new issues by adding a variety of different events."""
 
     timestamp = datetime.utcnow()
     one_a = EventRecord(source_type="test_type", fingerprint="f1", received_at=timestamp)
@@ -449,7 +493,7 @@ def test_check_if_new(*_):
 
 
 def test_remove_duplicate_events():
-    """Test the remove_duplicate_events function"""
+    """Test the remove_duplicate_events function by ensuring that duplicate events are removed."""
     one = EventRecord(received_at=datetime(2018, 2, 19, 0, 0, 11), source_type="datastoretest", owner="a", data={})
     one.fingerprint = "f1"
     two = EventRecord(received_at=datetime(2018, 2, 20, 0, 0, 11), source_type="datastoretest", owner="a", data={})
@@ -464,95 +508,53 @@ def test_remove_duplicate_events():
     assert len(records) == 2
 
 
-@pytest.fixture
-def ds_instance():
-    yield comet_core.data_store.DataStore("sqlite://")
+def test_get_real_time_events_did_not_addressed(data_store_with_real_time_events, non_addressed_event):
+    """Test getting realtime events that were not addressed.
 
+    Compare the events by their string representation as the objects are not identical.
+    """
 
-@pytest.fixture
-def non_addressed_event():
-    # event sent but missing in the ignore_event table to
-    # indicate that it wasn't addressed by the user
-    event = EventRecord(
-        received_at=datetime(2018, 7, 7, 9, 0, 0),
-        source_type="datastoretest",
-        owner="a",
-        sent_at=datetime(2018, 7, 7, 9, 0, 0),
-        data={},
-    )
-    event.fingerprint = "f1"
-    return event
-
-
-@pytest.fixture
-def addressed_event(ds_instance):
-    # event was sent and addressed (ack by the user)
-    ack_event = EventRecord(
-        received_at=datetime(2018, 7, 7, 9, 30, 0),
-        source_type="datastoretest",
-        owner="a",
-        sent_at=datetime(2018, 7, 7, 9, 30, 0),
-        data={},
-    )
-    ack_event.fingerprint = "f2"
-    ds_instance.ignore_event_fingerprint(ack_event.fingerprint, ignore_type=IgnoreFingerprintRecord.ACKNOWLEDGE)
-    return ack_event
-
-
-@pytest.fixture
-def event_to_escalate(ds_instance):
-    # event was sent and addressed (escalated by the user)
-    escalated_event = EventRecord(
-        received_at=datetime(2018, 7, 7, 9, 30, 0),
-        source_type="datastoretest",
-        owner="a",
-        sent_at=datetime(2018, 7, 7, 9, 30, 0),
-        data={},
-    )
-    escalated_event.fingerprint = "f3"
-    ds_instance.ignore_event_fingerprint(
-        escalated_event.fingerprint, ignore_type=IgnoreFingerprintRecord.ESCALATE_MANUALLY
-    )
-    return escalated_event
-
-
-@pytest.fixture
-def ds_with_real_time_events(ds_instance, addressed_event, non_addressed_event, event_to_escalate):
-    ds_instance.add_record(addressed_event)
-    ds_instance.add_record(non_addressed_event)
-    ds_instance.add_record(event_to_escalate)
-    return ds_instance
-
-
-def test_get_real_time_events_did_not_addressed(ds_with_real_time_events, non_addressed_event):
     source_type = "datastoretest"
-    non_addressed_events = ds_with_real_time_events.get_events_did_not_addressed(source_type)
+    non_addressed_events = data_store_with_real_time_events.get_events_did_not_addressed(source_type)
 
-    assert non_addressed_event in non_addressed_events
+    # Compare the id of the events as the event objects themselves are not equal.
+    assert non_addressed_event.id in [x.id for x in non_addressed_events]
 
 
-def test_get_real_time_events_need_escalation(ds_with_real_time_events, event_to_escalate):
+def test_get_real_time_events_need_escalation(data_store_with_real_time_events, event_to_escalate):
+    """Test getting realtime events that were not escalated.
+
+    Compare the events by their string representation as the objects are not identical.
+    """
     source_type = "datastoretest"
-    events_to_escalate = ds_with_real_time_events.get_events_need_escalation(source_type)
+    events_to_escalate = data_store_with_real_time_events.get_events_need_escalation(source_type)
 
-    assert event_to_escalate in events_to_escalate
+    # Compare the id of the events as the event objects themselves are not equal.
+    assert event_to_escalate.__repr__() in [x.__repr__() for x in events_to_escalate]
 
 
-def test_ignore_event_fingerprint_with_metadata(ds_instance):
+def test_ignore_event_fingerprint_with_metadata(data_store):
+    """Test the ignore events feature by querying the database directly to ensure the fingerprint is stored."""
     fingerprint = "f1"
     record_metadata = {"slack_channel": "channel"}
-    ds_instance.ignore_event_fingerprint(
+    data_store.ignore_event_fingerprint(
         fingerprint, ignore_type=IgnoreFingerprintRecord.ESCALATE_MANUALLY, record_metadata=record_metadata
     )
-    result = (
-        ds_instance.session.query(IgnoreFingerprintRecord)
-        .filter(IgnoreFingerprintRecord.fingerprint == fingerprint)
-        .one_or_none()
-    )
-    assert result.record_metadata == record_metadata
+    with data_store.session.begin() as session:
+        result = (
+            session.query(IgnoreFingerprintRecord)
+            .filter(IgnoreFingerprintRecord.fingerprint == fingerprint)
+            .one_or_none()
+        )
+        assert result.record_metadata == record_metadata
 
 
-def test_get_interactions_for_fingerprint(ds_instance):
+def test_get_interactions_for_fingerprint(data_store):
+    """Test fingerprint interaction of the data store.
+
+    Create an IgnoreFingerprintRecord, store it in the data store and read it back to ensure it has been stored
+    properly.
+    """
     one_a = IgnoreFingerprintRecord(
         id=1,
         fingerprint="f1",
@@ -562,7 +564,7 @@ def test_get_interactions_for_fingerprint(ds_instance):
         record_metadata=None,
     )
     fingerprint = "f1"
-    ds_instance.ignore_event_fingerprint(
+    data_store.ignore_event_fingerprint(
         fingerprint,
         ignore_type=one_a.ignore_type,
         record_metadata=one_a.record_metadata,
@@ -579,5 +581,5 @@ def test_get_interactions_for_fingerprint(ds_instance):
             "expires_at": datetime(2019, 1, 7, 0, 0, 11),
         }
     ]
-    result = ds_instance.get_interactions_fingerprint(fingerprint)
+    result = data_store.get_interactions_fingerprint(fingerprint)
     assert result == expected

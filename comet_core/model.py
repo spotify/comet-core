@@ -16,34 +16,16 @@
 import json
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, Integer, String, UnicodeText, types
-from sqlalchemy.ext.declarative import declarative_base
+import sqlalchemy
+import sqlalchemy.orm
+
+BaseRecord = sqlalchemy.orm.declarative_base()
 
 
-class BaseRecordRepr:
-    """
-    This class can be used by declarative_base, to add an automatic
-    __repr__ method to *all* subclasses of BaseRecord.
-    """
-
-    def __repr__(self):
-        """Return a representation of this object as a string.
-
-        Returns:
-            str: a representation of the object.
-        """
-        return f"{self.__class__.__name__}: " + " ".join(
-            [f"{k}={self.__getattribute__(k)}" for k, v in self.__class__.__dict__.items() if hasattr(v, "__set__")]
-        )
-
-
-BaseRecord = declarative_base(cls=BaseRecordRepr)
-
-
-class JSONType(types.TypeDecorator):  # pylint: disable=abstract-method
+class JSONType(sqlalchemy.types.TypeDecorator):  # pylint: disable=abstract-method
     """This is for testing purposes, to make the JSON type work with sqlite."""
 
-    impl = UnicodeText
+    impl = sqlalchemy.UnicodeText
 
     cache_ok = True
 
@@ -57,7 +39,7 @@ class JSONType(types.TypeDecorator):  # pylint: disable=abstract-method
             object: if dialect name is 'mysql' it will override the type descriptor to JSON()
         """
         if dialect.name == "mysql":
-            return dialect.type_descriptor(JSON())
+            return dialect.type_descriptor(sqlalchemy.JSON())
         return dialect.type_descriptor(self.impl)
 
     def process_bind_param(self, value, dialect):
@@ -101,17 +83,17 @@ class EventRecord(BaseRecord):
     """
 
     __tablename__ = "event"
-    id = Column(Integer, primary_key=True)
-    source_type = Column(String(250), nullable=False)
-    fingerprint = Column(String(250))
-    owner = Column(String(250))
-    event_metadata = Column(JSONType())
-    data = Column(JSONType())
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    source_type = sqlalchemy.Column(sqlalchemy.String(250), nullable=False)
+    fingerprint = sqlalchemy.Column(sqlalchemy.String(250))
+    owner = sqlalchemy.Column(sqlalchemy.String(250))
+    event_metadata = sqlalchemy.Column(JSONType())
+    data = sqlalchemy.Column(JSONType())
 
-    received_at = Column(DateTime, default=datetime.utcnow)
-    sent_at = Column(DateTime, default=None)
-    escalated_at = Column(DateTime, default=None)
-    processed_at = Column(DateTime, default=None)
+    received_at = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.utcnow)
+    sent_at = sqlalchemy.Column(sqlalchemy.DateTime, default=None)
+    escalated_at = sqlalchemy.Column(sqlalchemy.DateTime, default=None)
+    processed_at = sqlalchemy.Column(sqlalchemy.DateTime, default=None)
 
     def __init__(self, *args, **kwargs):
         self.new = False
@@ -129,17 +111,20 @@ class EventRecord(BaseRecord):
         else:
             self.event_metadata = metadata
 
+    def __repr__(self):
+        return f"EventRecord(id={self.id!r}, source_type={self.source_type!r}, fingerprint={self.fingerprint!r})"
+
 
 class IgnoreFingerprintRecord(BaseRecord):
     """Acceptedrisk model."""
 
     __tablename__ = "ignore_fingerprint"
-    id = Column(Integer, primary_key=True)
-    fingerprint = Column(String(250))
-    ignore_type = Column(String(50))
-    reported_at = Column(DateTime, default=datetime.utcnow)
-    expires_at = Column(DateTime, default=None)
-    record_metadata = Column(JSONType())
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    fingerprint = sqlalchemy.Column(sqlalchemy.String(250))
+    ignore_type = sqlalchemy.Column(sqlalchemy.String(50))
+    reported_at = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.utcnow)
+    expires_at = sqlalchemy.Column(sqlalchemy.DateTime, default=None)
+    record_metadata = sqlalchemy.Column(JSONType())
 
     SNOOZE = "snooze"
     ACCEPT_RISK = "acceptrisk"
@@ -147,3 +132,6 @@ class IgnoreFingerprintRecord(BaseRecord):
     ACKNOWLEDGE = "acknowledge"
     ESCALATE_MANUALLY = "escalate_manually"
     RESOLVED = "resolved"
+
+    def __repr__(self):
+        return f"IgnoreFingerPrintRecord(id={self.id!r}, fingerprint={self.fingerprint!r}, ignore_type={self.ignore_type!r})"
