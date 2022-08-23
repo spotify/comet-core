@@ -4,7 +4,6 @@
 
 _Comet is deprecated and we are decommissioning our internal installation. We
 will only make minor changes until we plan on archiving these repositories in
-
 early 2022. If you are using Comet, please create an issue to discuss Comets
 future._
 
